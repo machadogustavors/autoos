@@ -1,0 +1,196 @@
+// AutoOS — schema relacional transacional.
+// Espelha docs/SPEC.md §6.2. Telemetria de série temporal NÃO mora aqui —
+// só o snapshot pontual por OS (telemetry_snapshots). Ver contract/mqtt-topics.md.
+//
+// Convenção de nomes: modelo/campo em camelCase (código), tabela/coluna em
+// snake_case via @map/@@map (banco) — é a mesma convenção descrita no
+// SPEC/AGENTS: código em inglês, e aqui especificamente snake_case no SQL.
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────
+
+enum ServiceOrderStatus {
+  open
+  in_progress
+  completed
+  cancelled
+}
+
+enum ServiceOrderItemType {
+  part
+  service
+}
+
+// ──────────────────────────────────────────
+// Auth (RF-01, RF-02)
+// ──────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  // Nulo até o primeiro login bem-sucedido (RF-01) — usuário nasce por seed,
+  // sem auto-cadastro. Preenchido no primeiro login, casado por e-mail.
+  googleSub String?  @unique @map("google_sub")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  refreshTokens RefreshToken[]
+  idempotencyKeys IdempotencyKey[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  // Só o hash — nunca o valor em texto puro (RF-02).
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ──────────────────────────────────────────
+// Clientes e veículos (RF-03, RF-04)
+// ──────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vehicles      Vehicle[]
+  serviceOrders ServiceOrder[]
+
+  @@map("customers")
+}
+
+model Vehicle {
+  id     String  @id @default(uuid())
+  customerId String @map("customer_id")
+  plate  String  @unique
+  brand  String?
+  model  String?
+  year   Int?
+  color  String?
+  // Só usado até a primeira leitura de telemetria (RF-04) — depois disso,
+  // TelemetrySnapshot.mileage é a fonte preferida (RF-13).
+  referenceMileage Int?     @map("reference_mileage")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  serviceOrders ServiceOrder[]
+
+  @@index([customerId])
+  @@map("vehicles")
+}
+
+// ──────────────────────────────────────────
+// Ordens de serviço e itens (RF-05 a RF-11a)
+// ──────────────────────────────────────────
+
+model ServiceOrder {
+  id          String             @id @default(uuid())
+  customerId  String             @map("customer_id")
+  vehicleId   String             @map("vehicle_id")
+  description String?
+  status      ServiceOrderStatus @default(open)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  completedAt DateTime?          @map("completed_at")
+
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  vehicle             Vehicle            @relation(fields: [vehicleId], references: [id])
+  items               ServiceOrderItem[]
+  telemetrySnapshots  TelemetrySnapshot[]
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("service_orders")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  items ServiceOrderItem[]
+
+  @@map("products")
+}
+
+model ServiceOrderItem {
+  id             String               @id @default(uuid())
+  serviceOrderId String               @map("service_order_id")
+  type           ServiceOrderItemType
+  description    String
+  // Nulo para type=service e para peça avulsa sem controle de estoque.
+  // Preenchido só quando a peça vem do estoque (RF-19) — dispara a baixa
+  // automática transacional (RF-11a).
+  productId String?  @map("product_id")
+  quantity  Decimal? @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+  product      Product?     @relation(fields: [productId], references: [id])
+
+  @@index([serviceOrderId])
+  @@map("service_order_items")
+}
+
+// ──────────────────────────────────────────
+// Telemetria — snapshot transacional (RF-13)
+// ──────────────────────────────────────────
+
+model TelemetrySnapshot {
+  id                String   @id @default(uuid())
+  serviceOrderId    String   @map("service_order_id")
+  mileage           Int
+  engineTemperature Float?   @map("engine_temperature")
+  batteryVoltage    Float?   @map("battery_voltage")
+  // Array de códigos DTC (ex.: ["P0301"]). [] quando não há código ativo,
+  // nunca nulo (RF-13).
+  dtcCodes  Json     @default("[]") @map("dtc_codes")
+  capturedAt DateTime @map("captured_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+
+  @@index([serviceOrderId])
+  @@map("telemetry_snapshots")
+}
+
+// ──────────────────────────────────────────
+// Idempotência (RF-08, RF-11, RNF-06)
+// ──────────────────────────────────────────
+
+model IdempotencyKey {
+  key        String   @id
+  userId     String   @map("user_id")
+  operation  String
+  resourceId String?  @map("resource_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("idempotency_keys")
+}

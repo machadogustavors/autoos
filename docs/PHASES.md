@@ -10,9 +10,11 @@ Não é o SPEC (isso é [`SPEC.md`](./SPEC.md)) nem o contrato (isso é [`../con
 
 ## Fase 1 — Scaffold do backend
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-Estrutura inicial do `api/` (NestJS + TypeScript), `schema.prisma` completo a partir da seção 6.2 do SPEC, `docker-compose.yml` (Postgres local, mesmo padrão do GMOpero), `.env.example`, módulo de saúde (`GET /v1/health`).
+Estrutura inicial do `api/` (NestJS 11 + TypeScript + Prisma 7, mesmo padrão de tooling do GMOpero: ESLint flat config, Prettier, Jest), `schema.prisma` completo a partir da seção 6.2 do SPEC (`users`, `refresh_tokens`, `customers`, `vehicles`, `service_orders`, `products`, `service_order_items`, `telemetry_snapshots`, `idempotency_keys`), `docker-compose.yml` (Postgres local, porta 5432 + banco de teste na 5433), `.env.example` com `GOOGLE_CLIENT_ID`/LARCC vazios de propósito, `prisma/seed.ts` (cria o usuário inicial por e-mail, já que não há auto-cadastro), decorator `Public` compartilhado, módulo de saúde (`GET /v1/health`, 503 se o Postgres não responder).
+
+Validado nesta fase: `npm install`, `prisma generate`, `nest build`, `eslint` e `jest` (2 testes do health controller) rodam limpos. **Não validado:** migration real contra Postgres — Docker Desktop não estava ativo neste ambiente; rodar `docker compose up -d && npx prisma migrate dev` é o primeiro passo de quem continuar.
 
 ## Fase 2 — Autenticação (Google Sign-In + refresh token)
 

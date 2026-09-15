@@ -1,0 +1,30 @@
+services:
+  autoos-db:
+    image: postgres:16-alpine
+    container_name: autoos-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: autoos
+      POSTGRES_PASSWORD: autoos_dev
+      POSTGRES_DB: autoos
+    volumes:
+      - autoos_data:/var/lib/postgresql/data
+
+  autoos-db-test:
+    image: postgres:16-alpine
+    container_name: autoos-db-test
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: autoos
+      POSTGRES_PASSWORD: autoos_test
+      POSTGRES_DB: autoos_test
+    volumes:
+      - autoos_test_data:/var/lib/postgresql/data
+
+volumes:
+  autoos_data:
+  autoos_test_data:
