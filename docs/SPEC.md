@@ -64,18 +64,18 @@ Estados: se a tela tiver lista, envio ou conexão
 
 ### 2.1 Autenticação
 
-**RF-01 · Login por e-mail e senha**
+**RF-01 · Login com conta Google**
 
-Sem Google Sign-In (isso é para campus, não para uma oficina). O mecânico entra com credencial criada no servidor.
+Sem senha própria — o mecânico entra com a conta Google que já cadastrou o e-mail no AutoOS. Diferente de um app de campus, aqui não existe domínio institucional (tipo `@setrem.com.br`) pra filtrar sozinho quem pode entrar: o controle é a lista de usuários já existente no banco.
 
-Given: usuário cadastrado no banco.
-When: envia `{ email, password }` para `postLogin`.
-Then: recebe `{ accessToken, refreshToken, user }`.
+Given: usuário com conta Google cujo e-mail já foi cadastrado no AutoOS (seed, RF-01 não cria conta nova).
+When: completa o Google Sign-In no app, o SDK devolve um `idToken`, o app manda `{ idToken }` para `postLogin`.
+Then: o servidor valida o `idToken` junto ao Google (audience = `GOOGLE_CLIENT_ID`), confere que o e-mail bate com um usuário já cadastrado, vincula `googleSub` a esse usuário (na primeira vez) e devolve `{ accessToken, refreshToken, user }`.
 
-Regras: `accessToken` expira em minutos, não em horas (ver RNF-01). O app guarda os dois tokens em armazenamento seguro (`expo-secure-store`), nunca em `AsyncStorage` puro.
-Falhas: 401 credencial inválida — mensagem única, não revela se o e-mail existe.
+Regras: `accessToken` expira em minutos, não em horas (ver RNF-01). O app guarda os dois tokens em armazenamento seguro (`expo-secure-store`), nunca em `AsyncStorage` puro. Papel continua vindo do servidor, nunca do Google. Login com Google **não cria usuário novo** — se o e-mail não estiver cadastrado, é 403, não um cadastro automático (ao contrário do padrão usado em apps de campus, onde qualquer conta do domínio institucional entra livremente).
+Falhas: 401 `idToken` inválido/expirado; 403 e-mail não cadastrado como usuário do AutoOS.
 Contrato: `postLogin`
-Estados: erro de formulário, loading no botão.
+Estados: erro de Sign-In, loading no botão.
 
 **RF-02 · Renovar sessão sem novo login**
 
@@ -400,7 +400,7 @@ Protocolo: **REST JSON** para tudo transacional. **MQTT sobre TLS** só para o f
 
 Tudo autenticado com `Authorization: Bearer <token>`, exceto `getHealth`, `postLogin` e `postRefreshToken`.
 
-**POST /v1/auth/login** (`postLogin`) — `{ email, password }` → `{ accessToken, refreshToken, user }`. 401 credencial inválida.
+**POST /v1/auth/login** (`postLogin`) — `{ idToken }` (do Google) → `{ accessToken, refreshToken, user }`. 401 idToken inválido; 403 e-mail não cadastrado.
 
 **POST /v1/auth/refresh** (`postRefreshToken`) — `{ refreshToken }` → novo `{ accessToken, refreshToken }`. 401 refresh inválido/expirado.
 
@@ -458,7 +458,7 @@ A telemetria é o oposto: volume alto, pouca estrutura relacional entre si, cons
 Nomes de tabela e coluna em inglês, `snake_case` — convenção do projeto (só a interface é em português).
 
 ```text
-users                  id, name, email, password_hash, created_at
+users                  id, name, email, google_sub (nullable, unique), created_at
 refresh_tokens         id, user_id, token_hash, expires_at, revoked_at (nullable),
                        created_at
                        UNIQUE (token_hash)
@@ -476,7 +476,7 @@ telemetry_snapshots    id, service_order_id, mileage, engine_temperature,
 idempotency_keys       key, user_id, operation, resource_id, created_at
 ```
 
-`refresh_tokens` guarda só o hash do token (nunca o valor em texto puro) — é o que permite a rotação da RF-02: emitir um novo marca o atual como `revoked_at`, e reuso de um token já revogado é sinal de token roubado (mata todos os tokens daquele usuário, força novo login). Sem tabela de empresa/tenant (V1 é single-tenant, ver AGENTS.md). `product_id` em `service_order_items` é nulo para item `service` e para peça avulsa sem controle de estoque; quando preenchido, a baixa (RF-11a) decrementa `products.stock_quantity` na mesma transação. Sem tabela de fornecedor, nota de compra ou pagamento — isso continua fora do escopo da V1 (ver Known Gaps).
+`users.google_sub` é nulo até o primeiro login: o usuário nasce por seed (só `name` + `email`), e o servidor preenche `google_sub` na primeira vez que aquele e-mail loga com sucesso (RF-01). Login seguinte casa por `google_sub`; se vier nulo ainda, casa por `email`. `refresh_tokens` guarda só o hash do token (nunca o valor em texto puro) — é o que permite a rotação da RF-02: emitir um novo marca o atual como `revoked_at`, e reuso de um token já revogado é sinal de token roubado (mata todos os tokens daquele usuário, força novo login). Sem tabela de empresa/tenant (V1 é single-tenant, ver AGENTS.md). `product_id` em `service_order_items` é nulo para item `service` e para peça avulsa sem controle de estoque; quando preenchido, a baixa (RF-11a) decrementa `products.stock_quantity` na mesma transação. Sem tabela de fornecedor, nota de compra ou pagamento — isso continua fora do escopo da V1 (ver Known Gaps).
 
 O banco **não** guarda a série temporal bruta de telemetria — só o snapshot pontual por OS (`telemetry_snapshots`). O histórico contínuo vive no LARCC.
 
@@ -514,7 +514,7 @@ A tela não chama `fetch`, BLE ou MQTT diretamente — sempre via repositório.
 
 ## 7. Critério de pronto da V1
 
-1. Mecânico entra com e-mail e senha.
+1. Mecânico entra com a conta Google já cadastrada no AutoOS.
 2. Cria uma OS vinculando cliente e veículo (cadastrando na hora, se novos).
 3. Pareia o dispositivo (ESP32 ou ELM327) via Bluetooth e recebe uma leitura automática anexada à OS.
 4. A mesma leitura, em paralelo, chega ao broker MQTT do LARCC com identificador de veículo pseudonimizado.

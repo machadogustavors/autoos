@@ -43,7 +43,10 @@ paths:
     post:
       operationId: postLogin
       tags: [auth]
-      summary: Login com e-mail e senha
+      summary: >-
+        Login com conta Google (RF-01). O servidor valida o idToken junto ao
+        Google e só autentica e-mails já cadastrados como usuário — sem
+        auto-cadastro.
       requestBody:
         required: true
         content:
@@ -57,10 +60,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
-        "400":
-          $ref: "#/components/responses/Error"
         "401":
-          $ref: "#/components/responses/Error"
+          description: idToken inválido, expirado, ou de emissor que não é o Google
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "403":
+          description: E-mail da conta Google não cadastrado como usuário do AutoOS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
 
   /auth/refresh:
     post:
@@ -605,10 +616,11 @@ components:
 
     LoginRequest:
       type: object
-      required: [email, password]
+      required: [idToken]
       properties:
-        email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
+        idToken:
+          type: string
+          description: ID token do Google (Google Identity Services), não a string literal "dev"
 
     TokenPair:
       type: object

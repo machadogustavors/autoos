@@ -45,7 +45,7 @@ cp api/.env.example api/.env
 cd api && npm install && npx prisma migrate dev && npm run start:dev
 ```
 
-Sem app Android ainda: use uma coleção HTTP (Insomnia/Postman) contra `POST /v1/auth/login` com o usuário seed criado pela migration. O Android, depois, manda o mesmo JSON.
+Sem app Android ainda: abra `http://localhost:3000/dev/login` (conta Google), copie o `idToken` e mande em `POST /v1/auth/login`. O e-mail precisa já existir em `users` (seed da migration) — login com Google não cria conta nova. Não use `idToken: "dev"`. O Android, depois, manda o mesmo JSON.
 
 ## Status
 

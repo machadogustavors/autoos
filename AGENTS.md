@@ -5,7 +5,7 @@ App da Auto Elétrica WM: abertura e acompanhamento de ordens de serviço, enriq
 ## Stack
 
 - Linguagem: **TypeScript** em todo o repositório (API, app, exceto firmware). Sem `any`.
-- API: **NestJS** (`@nestjs/core`). Autenticação **JWT** por bearer token + refresh token — não por cookie, porque o cliente é nativo.
+- API: **NestJS** (`@nestjs/core`). Login com **Google Sign-In** (sem senha própria); sessão via **JWT** bearer token + refresh token — não por cookie, porque o cliente é nativo.
 - Banco: **PostgreSQL** via **Prisma** ORM.
 - App: **React Native** via **Expo com dev client** (BLE não funciona no Expo Go — dev client é obrigatório desde o primeiro protótipo).
 - Dispositivo IoT: firmware **ESP32 + transceptor CAN MCP2515**, lendo PIDs OBD-II e DTCs. Adaptador **ELM327 comercial** como alternativa de contingência (Bluetooth Classic, perfil SPP — não BLE).
@@ -67,7 +67,7 @@ cd api && npx prisma studio     # inspecionar dados locais
 
 Health: `GET http://localhost:3000/v1/health` (200 só se o Postgres responder).
 
-Env: `api/.env` (gitignored). Modelo: `api/.env.example`. Sem segredo de LARCC (broker, certificado TLS) no git.
+Env: `api/.env` (gitignored). Modelo: `api/.env.example`. Sem `GOOGLE_CLIENT_ID`/client secret nem segredo de LARCC (broker, certificado TLS) no git.
 
 ## API
 
@@ -77,9 +77,13 @@ Banco: **Prisma**. Schema em `api/prisma/schema.prisma`. Migration: `npx prisma 
 
 Rotas públicas: `GET /v1/health`, `POST /v1/auth/login`, `POST /v1/auth/refresh`. O resto exige `Authorization: Bearer`.
 
-`POST /v1/auth/login`: body `{ email, password }`. Devolve `{ accessToken, refreshToken, user }`. `POST /v1/auth/refresh`: body `{ refreshToken }`, devolve novo par de tokens (rotação). Sem cookie — o app guarda os tokens em armazenamento seguro do sistema (Keychain/Keystore via `expo-secure-store`).
+`POST /v1/auth/login`: body `{ idToken }` (JWT **do Google**, não a string `dev`). A API chama `verifyIdToken` (audience = `GOOGLE_CLIENT_ID`, via `google-auth-library`). Sem domínio institucional pra filtrar (a oficina não tem G Suite próprio): o e-mail do token precisa bater com um `users.email` já cadastrado — se não bater, 403. Sem cadastro automático de conta nova, mesmo com Google válido. Na primeira vez que um e-mail loga com sucesso, o servidor grava `google_sub` naquele usuário; nas próximas, casa por `google_sub`. Papel sai da nossa tabela, não do Google. Resposta: `{ accessToken, refreshToken, user }`.
 
-Não crie `/login` fora de `/v1/auth/login`. Não reutilize cookie de sessão do frontend web do GMOpero — este é um sistema novo, sem código compartilhado com o GMOpero.
+`POST /v1/auth/refresh`: body `{ refreshToken }`, devolve novo par de tokens (rotação, ver RF-02/SPEC). Sem cookie — o app guarda os tokens em armazenamento seguro do sistema (Keychain/Keystore via `expo-secure-store`).
+
+`GET /dev/login`: HTML local (Google Identity Services) para escolher a conta e **copiar o idToken real**, sem precisar do app Android rodando ainda. Mesma origem (`http://localhost:3000`). Não é produto — o Android, depois, manda o mesmo JSON pro `POST /v1/auth/login`. Não use `idToken: "dev"`.
+
+Não crie `/login`, `/signin` ou `/oauth/callback` fora dessas rotas. Não reutilize cookie de sessão do frontend web do GMOpero — este é um sistema novo, sem código compartilhado com o GMOpero.
 
 ## Testes
 

@@ -38,6 +38,7 @@ Não crie campo só no controller do NestJS. Recuse PR que chama URL fora deste 
 
 | Arquivo | Caso |
 | --- | --- |
+| [`examples/auth-login-200.json`](./examples/auth-login-200.json) | Login com Google ok |
 | [`examples/service-orders-list-200.json`](./examples/service-orders-list-200.json) | Pátio ok |
 | [`examples/service-orders-create-400.json`](./examples/service-orders-create-400.json) | Criar OS sem veículo |
 | [`examples/service-order-telemetry-201.json`](./examples/service-order-telemetry-201.json) | Snapshot de telemetria anexado |
