@@ -11,6 +11,8 @@ App ──MQTT sobre TLS──▶ Broker do LARCC
 
 A perna App → API AutoOS (o *snapshot* pontual) é HTTP normal — está em `openapi.yaml`, operação `postServiceOrderTelemetry`.
 
+Nomes de campo, tópico e identificador de código são em inglês, como no resto do contrato — só texto de erro/copy é em português.
+
 ---
 
 ## 1. Do dispositivo ao app (BLE)
@@ -30,22 +32,22 @@ Payload de cada notificação:
 
 ```json
 {
-  "km": 84213,
+  "mileage": 84213,
   "rpm": 2150,
-  "temperaturaMotor": 91,
-  "tensaoBateria": 12.6,
-  "dtcs": ["P0301"],
-  "capturadoEm": "2026-10-14T14:32:01-03:00"
+  "engineTemperature": 91,
+  "batteryVoltage": 12.6,
+  "dtcCodes": ["P0301"],
+  "capturedAt": "2026-10-14T14:32:01-03:00"
 }
 ```
 
-Campos opcionais quando o PID correspondente não responde: `rpm`, `temperaturaMotor`, `tensaoBateria`. `km` é a leitura mais confiável e deve estar presente sempre que possível — é o campo que substitui a digitação manual (RF-13). `dtcs` é `[]` quando não há código ativo, nunca omitido.
+Campos opcionais quando o PID correspondente não responde: `rpm`, `engineTemperature`, `batteryVoltage`. `mileage` é a leitura mais confiável e deve estar presente sempre que possível — é o campo que substitui a digitação manual (RF-13). `dtcCodes` é `[]` quando não há código ativo, nunca omitido.
 
 ### 1.2 Fallback ELM327 (Bluetooth Classic, perfil SPP)
 
 Sem GATT — é um socket serial sobre RFCOMM. O app envia comandos AT/PID (protocolo ELM327 padrão: `ATZ`, `0100`, `010C` para RPM, `0105` para temperatura, `0142` para tensão, `03` para DTCs) e faz o parse da resposta hexadecimal para o mesmo formato JSON da seção 1.1 antes de seguir o fluxo (RF-13/RF-14 não diferenciam a origem depois desse ponto).
 
-Por isso a lógica de pareamento (RF-12/RF-17) trata os dois caminhos como uma única interface interna (`LeitorOBD`), com duas implementações: `LeitorBLE` e `LeitorELM327Classic`.
+Por isso a lógica de pareamento (RF-12/RF-17) trata os dois caminhos como uma única interface interna (`ObdReader`), com duas implementações: `BleReader` e `Elm327ClassicReader`.
 
 ---
 
@@ -64,28 +66,28 @@ Por isso a lógica de pareamento (RF-12/RF-17) trata os dois caminhos como uma �
 ### 2.2 Tópico
 
 ```
-autoos/{oficinaId}/veiculos/{veiculoHash}/telemetria
+autoos/{workshopId}/vehicles/{vehicleHash}/telemetry
 ```
 
-- `oficinaId`: fixo na V1 (single-tenant — ver AGENTS.md), existe no tópico só para não colidir com outros projetos no mesmo broker compartilhado do LARCC.
-- `veiculoHash`: **não é a placa**. É um hash (ex.: HMAC-SHA256 com chave só do AutoOS) do id interno do veículo. O mapeamento hash → placa fica só no Postgres do AutoOS (RF-15 / RNF-08). O LARCC nunca recebe a placa.
+- `workshopId`: fixo na V1 (single-tenant — ver AGENTS.md), existe no tópico só para não colidir com outros projetos no mesmo broker compartilhado do LARCC.
+- `vehicleHash`: **não é a placa**. É um hash (ex.: HMAC-SHA256 com chave só do AutoOS) do id interno do veículo. O mapeamento hash → placa fica só no Postgres do AutoOS (RF-15 / RNF-08). O LARCC nunca recebe a placa.
 
 ### 2.3 Payload publicado
 
 ```json
 {
-  "veiculoHash": "9f2a1c7e4b3d8801f6c2e9a5d47b1203",
-  "ordemServicoId": null,
-  "km": 84213,
+  "vehicleHash": "9f2a1c7e4b3d8801f6c2e9a5d47b1203",
+  "serviceOrderId": null,
+  "mileage": 84213,
   "rpm": 2150,
-  "temperaturaMotor": 91,
-  "tensaoBateria": 12.6,
-  "dtcs": ["P0301"],
-  "capturadoEm": "2026-10-14T14:32:01-03:00"
+  "engineTemperature": 91,
+  "batteryVoltage": 12.6,
+  "dtcCodes": ["P0301"],
+  "capturedAt": "2026-10-14T14:32:01-03:00"
 }
 ```
 
-`ordemServicoId` vai como `null` propositalmente — a OS é uma entidade transacional do AutoOS, não algo que precise existir no lado do LARCC. O que amarra a série temporal ao histórico do veículo é o `veiculoHash`, cruzado depois (dentro do AutoOS, nunca no LARCC) com `telemetria_snapshots.ordem_servico_id` via timestamp aproximado, se necessário para auditoria.
+`serviceOrderId` vai como `null` propositalmente — a OS é uma entidade transacional do AutoOS, não algo que precise existir no lado do LARCC. O que amarra a série temporal ao histórico do veículo é o `vehicleHash`, cruzado depois (dentro do AutoOS, nunca no LARCC) com `telemetry_snapshots.service_order_id` via timestamp aproximado, se necessário para auditoria.
 
 ### 2.4 Frequência
 
@@ -102,4 +104,4 @@ RNF-04: falha ao publicar (sem rede, broker indisponível, handshake TLS falho) 
 - UUIDs de serviço/característica BLE são placeholders — gerar valores reais (`uuidgen`) antes de programar o firmware, e atualizar este arquivo no mesmo commit.
 - Credenciais reais do broker LARCC (host, porta, certificado) ainda não fornecidas pela infraestrutura — `.env.example` traz variáveis vazias com comentário.
 - Sem fila de retry/offline para publicações MQTT perdidas — se isso virar requisito, é PR novo com fila local (ex.: SQLite) no app.
-- Algoritmo exato de hash de `veiculoHash` (HMAC vs. hash simples, rotação de chave) ainda não decidido — hoje é placeholder conceitual, não implementação.
+- Algoritmo exato de hash de `vehicleHash` (HMAC vs. hash simples, rotação de chave) ainda não decidido — hoje é placeholder conceitual, não implementação.

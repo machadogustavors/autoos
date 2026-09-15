@@ -7,6 +7,7 @@ info:
     Fluxo contínuo de telemetria (MQTT): ../contract/mqtt-topics.md
     Comportamento de produto: ../docs/SPEC.md
     Não adicione path ou campo sem atualizar o SPEC no mesmo commit.
+    Nomes de path, campo e schema são em inglês — só texto de erro/copy é em português.
 servers:
   - url: https://api.autoos.local/v1
     description: Prefixo /v1. Single-tenant — sem escopo de empresa na V1.
@@ -98,7 +99,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Usuario"
+                $ref: "#/components/schemas/User"
         "401":
           $ref: "#/components/responses/Error"
 
@@ -158,7 +159,7 @@ paths:
       summary: Busca veículo por placa (usado ao criar OS)
       security: [{ bearerAuth: [] }]
       parameters:
-        - name: placa
+        - name: plate
           in: query
           schema: { type: string }
         - name: after
@@ -300,9 +301,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [quantidadeEstoque]
+              required: [stockQuantity]
               properties:
-                quantidadeEstoque: { type: integer, minimum: 0 }
+                stockQuantity: { type: integer, minimum: 0 }
       responses:
         "200":
           description: Peça com quantidade ajustada
@@ -364,7 +365,7 @@ paths:
               $ref: "#/components/schemas/ServiceOrderCreate"
       responses:
         "201":
-          description: OS criada, status aberta
+          description: OS criada, status open
           content:
             application/json:
               schema:
@@ -374,7 +375,7 @@ paths:
         "401":
           $ref: "#/components/responses/Error"
         "409":
-          description: Veículo já possui OS aberta ou em_andamento
+          description: Veículo já possui OS open ou in_progress
           content:
             application/json:
               schema:
@@ -444,7 +445,7 @@ paths:
       operationId: postServiceOrderItem
       tags: [service-orders]
       summary: >-
-        Adiciona item (peça ou serviço, sem preço) (RF-11). Se `produtoId`
+        Adiciona item (peça ou serviço, sem preço) (RF-11). Se `productId`
         for informado, decrementa o estoque na mesma transação (RF-11a).
       security: [{ bearerAuth: [] }]
       parameters:
@@ -476,7 +477,7 @@ paths:
         "404":
           $ref: "#/components/responses/Error"
         "409":
-          description: OS concluída/cancelada não recebe item, ou ESTOQUE_INSUFICIENTE (RF-11a)
+          description: OS completed/cancelled não recebe item, ou INSUFFICIENT_STOCK (RF-11a)
           content:
             application/json:
               schema:
@@ -504,8 +505,8 @@ paths:
             schema:
               type: object
               properties:
-                descricao: { type: string }
-                quantidade: { type: number }
+                description: { type: string }
+                quantity: { type: number }
       responses:
         "200":
           description: Item atualizado
@@ -604,10 +605,10 @@ components:
 
     LoginRequest:
       type: object
-      required: [email, senha]
+      required: [email, password]
       properties:
         email: { type: string, format: email }
-        senha: { type: string, minLength: 8 }
+        password: { type: string, minLength: 8 }
 
     TokenPair:
       type: object
@@ -620,24 +621,24 @@ components:
       allOf:
         - $ref: "#/components/schemas/TokenPair"
         - type: object
-          required: [usuario]
+          required: [user]
           properties:
-            usuario: { $ref: "#/components/schemas/Usuario" }
+            user: { $ref: "#/components/schemas/User" }
 
-    Usuario:
+    User:
       type: object
-      required: [id, nome, email]
+      required: [id, name, email]
       properties:
         id: { type: string }
-        nome: { type: string }
+        name: { type: string }
         email: { type: string, format: email }
 
     CustomerCreate:
       type: object
-      required: [nome]
+      required: [name]
       properties:
-        nome: { type: string, maxLength: 200 }
-        telefone: { type: string, maxLength: 20 }
+        name: { type: string, maxLength: 200 }
+        phone: { type: string, maxLength: 20 }
 
     Customer:
       allOf:
@@ -659,15 +660,15 @@ components:
 
     VehicleCreate:
       type: object
-      required: [customerId, placa]
+      required: [customerId, plate]
       properties:
         customerId: { type: string }
-        placa: { type: string, maxLength: 8 }
-        marca: { type: string }
-        modelo: { type: string }
-        ano: { type: integer }
-        cor: { type: string }
-        kmReferencia: { type: integer, description: "Só usado até a primeira leitura de telemetria (RF-04)" }
+        plate: { type: string, maxLength: 8 }
+        brand: { type: string }
+        model: { type: string }
+        year: { type: integer }
+        color: { type: string }
+        referenceMileage: { type: integer, description: "Só usado até a primeira leitura de telemetria (RF-04)" }
 
     Vehicle:
       allOf:
@@ -689,10 +690,10 @@ components:
 
     ProductCreate:
       type: object
-      required: [nome, quantidadeEstoque]
+      required: [name, stockQuantity]
       properties:
-        nome: { type: string, maxLength: 200 }
-        quantidadeEstoque: { type: integer, minimum: 0 }
+        name: { type: string, maxLength: 200 }
+        stockQuantity: { type: integer, minimum: 0 }
 
     Product:
       allOf:
@@ -714,7 +715,7 @@ components:
 
     ServiceOrderStatus:
       type: string
-      enum: [aberta, em_andamento, concluida, cancelada]
+      enum: [open, in_progress, completed, cancelled]
 
     ServiceOrderCreate:
       type: object
@@ -722,19 +723,19 @@ components:
       properties:
         customerId: { type: string }
         vehicleId: { type: string }
-        descricao: { type: string }
+        description: { type: string }
 
     ServiceOrderCard:
       type: object
-      required: [id, status, placa, clienteNome]
+      required: [id, status, plate, customerName]
       properties:
         id: { type: string }
         status: { $ref: "#/components/schemas/ServiceOrderStatus" }
-        placa: { type: string }
-        clienteNome: { type: string }
-        marca: { type: string }
-        modelo: { type: string }
-        temDtcNaUltimaLeitura: { type: boolean }
+        plate: { type: string }
+        customerName: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        hasDtcOnLastReading: { type: boolean }
         createdAt: { type: string, format: date-time }
 
     ServiceOrderDetail:
@@ -742,13 +743,13 @@ components:
         - $ref: "#/components/schemas/ServiceOrderCard"
         - type: object
           properties:
-            descricao: { type: string }
-            itens:
+            description: { type: string }
+            items:
               type: array
               items: { $ref: "#/components/schemas/ServiceOrderItem" }
-            ultimaTelemetria:
+            lastTelemetry:
               $ref: "#/components/schemas/TelemetrySnapshot"
-            concluidaAt: { type: string, format: date-time, nullable: true }
+            completedAt: { type: string, format: date-time, nullable: true }
 
     ServiceOrderList:
       type: object
@@ -761,17 +762,17 @@ components:
 
     ServiceOrderItemCreate:
       type: object
-      required: [tipo, descricao]
+      required: [type, description]
       properties:
-        tipo: { type: string, enum: [peca, servico] }
-        descricao: { type: string, maxLength: 300 }
-        produtoId:
+        type: { type: string, enum: [part, service] }
+        description: { type: string, maxLength: 300 }
+        productId:
           type: string
           nullable: true
           description: >-
-            Só para tipo=peca vinda do estoque (RF-19). Ausente/null = peça
-            avulsa sem baixa de estoque, ou item tipo=servico.
-        quantidade: { type: number, minimum: 0 }
+            Só para type=part vinda do estoque (RF-19). Ausente/null = peça
+            avulsa sem baixa de estoque, ou item type=service.
+        quantity: { type: number, minimum: 0 }
 
     ServiceOrderItem:
       allOf:
@@ -784,15 +785,15 @@ components:
 
     TelemetrySnapshotCreate:
       type: object
-      required: [km, capturadoEm]
+      required: [mileage, capturedAt]
       properties:
-        km: { type: integer }
-        temperaturaMotor: { type: number, description: "°C" }
-        tensaoBateria: { type: number, description: "V" }
-        dtcs:
+        mileage: { type: integer }
+        engineTemperature: { type: number, description: "°C" }
+        batteryVoltage: { type: number, description: "V" }
+        dtcCodes:
           type: array
           items: { type: string }
-        capturadoEm: { type: string, format: date-time }
+        capturedAt: { type: string, format: date-time }
 
     TelemetrySnapshot:
       allOf:

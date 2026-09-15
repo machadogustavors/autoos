@@ -2,14 +2,14 @@
   "items": [
     {
       "id": "01J8ZB2C3D4E5F6G7H8J9K0M1N",
-      "nome": "Filtro de óleo",
-      "quantidadeEstoque": 12,
+      "name": "Filtro de óleo",
+      "stockQuantity": 12,
       "createdAt": "2026-09-01T08:00:00-03:00"
     },
     {
       "id": "01J8ZB2C3D4E5F6G7H8J9K0M1P",
-      "nome": "Pastilha de freio dianteira",
-      "quantidadeEstoque": 3,
+      "name": "Pastilha de freio dianteira",
+      "stockQuantity": 3,
       "createdAt": "2026-09-01T08:00:00-03:00"
     }
   ],

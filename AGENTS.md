@@ -71,13 +71,13 @@ Env: `api/.env` (gitignored). Modelo: `api/.env.example`. Sem segredo de LARCC (
 
 ## API
 
-Postgres local (Docker na raiz). Sem multi-tenant: a V1 atende só a Auto Elétrica WM — não existe tabela de empresa/`companyId`. Se o projeto crescer para outras oficinas, isso é trabalho futuro documentado, não algo a antecipar agora.
+Postgres local (Docker na raiz). Sem multi-tenant: a V1 atende só a Auto Elétrica WM — não existe tabela de empresa/`workshopId`. Se o projeto crescer para outras oficinas, isso é trabalho futuro documentado, não algo a antecipar agora.
 
 Banco: **Prisma**. Schema em `api/prisma/schema.prisma`. Migration: `npx prisma migrate dev --name <nome>`. Não edite SQL de migration já aplicada: mude o schema e gere a próxima.
 
 Rotas públicas: `GET /v1/health`, `POST /v1/auth/login`, `POST /v1/auth/refresh`. O resto exige `Authorization: Bearer`.
 
-`POST /v1/auth/login`: body `{ email, senha }`. Devolve `{ accessToken, refreshToken, usuario }`. `POST /v1/auth/refresh`: body `{ refreshToken }`, devolve novo par de tokens (rotação). Sem cookie — o app guarda os tokens em armazenamento seguro do sistema (Keychain/Keystore via `expo-secure-store`).
+`POST /v1/auth/login`: body `{ email, password }`. Devolve `{ accessToken, refreshToken, user }`. `POST /v1/auth/refresh`: body `{ refreshToken }`, devolve novo par de tokens (rotação). Sem cookie — o app guarda os tokens em armazenamento seguro do sistema (Keychain/Keystore via `expo-secure-store`).
 
 Não crie `/login` fora de `/v1/auth/login`. Não reutilize cookie de sessão do frontend web do GMOpero — este é um sistema novo, sem código compartilhado com o GMOpero.
 

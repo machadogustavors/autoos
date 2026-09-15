@@ -148,7 +148,7 @@ components:
     textColor: "{colors.link}"
     typography: "{typography.body-md-medium}"
     padding: "0"
-  card-os:
+  card-service-order:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
@@ -160,7 +160,7 @@ components:
     rounded: "{rounded.sm}"
     padding: "{spacing.lg}"
     border: "1px solid {colors.line}"
-  panel-telemetria:
+  panel-telemetry:
     backgroundColor: "{colors.surface-deep}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
@@ -173,16 +173,16 @@ components:
     rounded: "{rounded.xs}"
     padding: "4px 8px"
     border: "1px solid {colors.line}"
-  chip-status-aberta:
+  chip-status-open:
     backgroundColor: "{colors.primary-soft}"
     textColor: "{colors.on-primary-soft}"
-  chip-status-em_andamento:
+  chip-status-in-progress:
     backgroundColor: "{colors.warn-soft}"
     textColor: "{colors.on-warn}"
-  chip-status-concluida:
+  chip-status-completed:
     backgroundColor: "{colors.ok-soft}"
     textColor: "{colors.on-ok}"
-  chip-status-cancelada:
+  chip-status-cancelled:
     backgroundColor: "{colors.surface-deep}"
     textColor: "{colors.faint}"
   chip-dtc:
@@ -293,7 +293,7 @@ Cobertura V1: login, pátio de OS, criar OS, detalhe, itens, estoque, pareamento
 ### Text
 - **Ink** ({colors.ink}): título e corpo
 - **Muted** ({colors.muted}): corpo secundário
-- **Faint** ({colors.faint}): label, meta, timestamp, status cancelada
+- **Faint** ({colors.faint}): label, meta, timestamp, status `cancelled`
 
 ### Semantic
 - **Danger** / **Danger soft** ({colors.danger}, {colors.danger-soft}): erro, DTC ativo, cancelar OS
@@ -394,7 +394,7 @@ Estados documentados: default, pressed, disabled, loading. Sem hover (é app tou
 
 ### Cards
 
-**`card-os`** — item do pátio.
+**`card-service-order`** — item do pátio.
 - Fundo `{colors.surface}`, borda `1px {colors.line}`, `{rounded.sm}`, padding `{spacing.md}`.
 - Título = placa do veículo, `{typography.heading-card}`. Subtítulo = cliente + marca/modelo, `{typography.body-sm}` `{colors.muted}`.
 - Chip de status na base. Se houver leitura recente com DTC, `chip-dtc` aparece ao lado do status. Sem descrição completa (isso é do detalhe).
@@ -402,7 +402,7 @@ Estados documentados: default, pressed, disabled, loading. Sem hover (é app tou
 **`card-detail`** — tela de uma OS.
 - Mesmo tratamento. Padding `{spacing.lg}`. Corpo `{typography.body-md}`.
 
-**`panel-telemetria`** — bloco de leitura do dispositivo, dentro do detalhe da OS ou na tela de pareamento.
+**`panel-telemetry`** — bloco de leitura do dispositivo, dentro do detalhe da OS ou na tela de pareamento.
 - Fundo `{colors.surface-deep}` (mais escuro que o card, pra destacar o número).
 - Cada métrica: label `{typography.caption}` `{colors.faint}` em cima, valor `{typography.telemetry-value}` + unidade `{typography.telemetry-unit}` embaixo.
 - DTCs (se houver): lista de `chip-dtc`, um por código.
@@ -410,7 +410,7 @@ Estados documentados: default, pressed, disabled, loading. Sem hover (é app tou
 
 ### Chips e badges
 
-**`chip-status-*`** — aberta (laranja soft), em_andamento (âmbar soft), concluida (verde soft), cancelada (cinza/faint).
+**`chip-status-*`** — `open` (laranja soft), `in-progress` (âmbar soft), `completed` (verde soft), `cancelled` (cinza/faint).
 **`chip-dtc`** — código de falha (`P0301`). Fundo de perigo — DTC é sempre alerta, nunca neutro.
 **`badge-ble`** — bolinha + rótulo curto: "Conectado" (ok), "Conectando…" (warn), "Desconectado" (faint).
 
@@ -438,10 +438,10 @@ Estados documentados: default, pressed, disabled, loading. Sem hover (é app tou
 | Tela | Primário | Notas |
 |---|---|---|
 | Login | Entrar | Sem Google, sem cadastro self-service — usuário é criado no servidor |
-| Pátio | Nova OS | Lista de OS `aberta` / `em_andamento`. Offline = banner + cache |
+| Pátio | Nova OS | Lista de OS `open` / `in_progress`. Offline = banner + cache |
 | Pátio vazio | Nova OS | Mensagem + um primário |
 | Nova OS | Criar OS | Selecionar/cadastrar cliente e veículo. Rascunho não some se a rede cair |
-| Detalhe da OS | Concluir OS (se aberta/em andamento) | `card-detail` + `panel-telemetria` + itens |
+| Detalhe da OS | Concluir OS (se aberta/em andamento) | `card-detail` + `panel-telemetry` + itens |
 | Pareamento BLE | Parear | Lista de dispositivos encontrados. `badge-ble` de status |
 | Telemetria (dentro do detalhe) | — | Snapshot mais recente. Sem histórico gráfico na V1 |
 | Itens da OS | Adicionar item | Peça (do estoque ou avulsa) ou serviço, descrição, sem preço |
@@ -489,21 +489,21 @@ App nativo, uso em pé/no pátio. Sem breakpoint de marketing site.
 
 ## Iteration Guide
 
-1. Um componente por vez (`button-primary`, `card-os`, `panel-telemetria`)
+1. Um componente por vez (`button-primary`, `card-service-order`, `panel-telemetry`)
 2. Cite o token: `{colors.primary}`, `{rounded.sm}`, `button-primary-pressed`
 3. Corpo default: `{typography.body-md}`. Número de sensor: `{typography.telemetry-value}`
 4. Cards, botões e painéis: `{rounded.sm}` (6px)
 5. Hex só em `app/theme/tokens.ts`
 6. Depois de mudar token, atualize este YAML e o código no mesmo PR
-7. Prompt: "implemente o pátio RF-05 com `card-os`, `banner-offline` e `empty-state` conforme DESIGN.md"
+7. Prompt: "implemente o pátio RF-05 com `card-service-order`, `banner-offline` e `empty-state` conforme DESIGN.md"
 
 ## Code
 
 ```text
 app/theme/tokens.ts       colors, spacing, rounded, type
 app/ui/Button.tsx         variants: primary, secondary, danger
-app/ui/Card.tsx           card-os, card-detail
-app/ui/TelemetryPanel.tsx panel-telemetria
+app/ui/Card.tsx           card-service-order, card-detail
+app/ui/TelemetryPanel.tsx panel-telemetry
 app/ui/Chip.tsx           status, dtc
 app/ui/BleBadge.tsx       badge-ble
 app/ui/Banner.tsx         offline, error

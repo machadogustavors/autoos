@@ -30,7 +30,7 @@ O agente lê `AGENTS.md` sozinho. No chat, cite o RF e o `operationId`:
 Implemente RF-07 (criar OS) conforme docs/SPEC.md.
 Use só postServiceOrder no contract/openapi.yaml.
 Visual conforme DESIGN.md (tokens, um primário, painel de telemetria em mono).
-Card = OrdemServicoCard. Sem problema completo.
+Card = ServiceOrderCard. Sem problema completo.
 Estados: esqueleto, vazio, erro, offline com rascunho.
 Não crie path novo.
 ```
