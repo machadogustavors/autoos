@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "id": "01J8Z9K3F5N7Q2R4S6T8V0W2X4",
+      "status": "em_andamento",
+      "placa": "ABC1D23",
+      "clienteNome": "Wilson Machado",
+      "marca": "Volkswagen",
+      "modelo": "Gol",
+      "temDtcNaUltimaLeitura": true,
+      "createdAt": "2026-10-14T13:05:00-03:00"
+    },
+    {
+      "id": "01J8Z9K3F5N7Q2R4S6T8V0W2X5",
+      "status": "aberta",
+      "placa": "XYZ9A87",
+      "clienteNome": "Maria Fontoura",
+      "marca": "Fiat",
+      "modelo": "Uno",
+      "temDtcNaUltimaLeitura": false,
+      "createdAt": "2026-10-14T09:40:00-03:00"
+    }
+  ],
+  "paging": {
+    "nextCursor": null,
+    "hasMore": false
+  }
+}

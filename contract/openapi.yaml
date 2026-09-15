@@ -1,0 +1,810 @@
+openapi: 3.1.0
+info:
+  title: AutoOS API
+  version: 1.0.0
+  description: |
+    Contrato HTTP transacional da V1 (cliente, veículo, ordem de serviço, item, snapshot de telemetria).
+    Fluxo contínuo de telemetria (MQTT): ../contract/mqtt-topics.md
+    Comportamento de produto: ../docs/SPEC.md
+    Não adicione path ou campo sem atualizar o SPEC no mesmo commit.
+servers:
+  - url: https://api.autoos.local/v1
+    description: Prefixo /v1. Single-tenant — sem escopo de empresa na V1.
+tags:
+  - name: health
+  - name: auth
+  - name: customers
+  - name: vehicles
+  - name: products
+  - name: service-orders
+  - name: telemetry
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+  /auth/login:
+    post:
+      operationId: postLogin
+      tags: [auth]
+      summary: Login com e-mail e senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Sessão do AutoOS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /auth/refresh:
+    post:
+      operationId: postRefreshToken
+      tags: [auth]
+      summary: Renova accessToken usando refreshToken (rotação)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: Novo par de tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Usuário da sessão
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Usuario"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: Busca cliente por nome (usado ao criar OS)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Busca por nome ou telefone
+        - name: after
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerList"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: postCustomer
+      tags: [customers]
+      summary: Cadastra cliente na hora (RF-03)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerCreate"
+      responses:
+        "201":
+          description: Cliente criado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /vehicles:
+    get:
+      operationId: listVehicles
+      tags: [vehicles]
+      summary: Busca veículo por placa (usado ao criar OS)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: placa
+          in: query
+          schema: { type: string }
+        - name: after
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Lista de veículos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VehicleList"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: postVehicle
+      tags: [vehicles]
+      summary: Cadastra veículo por placa (RF-04)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleCreate"
+      responses:
+        "201":
+          description: Veículo criado (ou reaproveitado se já existir para o cliente)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Placa já pertence a outro cliente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /vehicles/{id}/service-orders:
+    get:
+      operationId: listVehicleServiceOrders
+      tags: [vehicles, service-orders]
+      summary: Histórico de OS do veículo (RF-18)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: after
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Histórico de OS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderList"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: Consulta estoque de peças (RF-19)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Busca por nome
+        - name: after
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Lista de peças
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: postProduct
+      tags: [products]
+      summary: Cadastra peça no estoque (RF-20)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductCreate"
+      responses:
+        "201":
+          description: Peça criada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /products/{id}:
+    patch:
+      operationId: patchProduct
+      tags: [products]
+      summary: Ajusta quantidade em estoque (RF-20)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantidadeEstoque]
+              properties:
+                quantidadeEstoque: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Peça com quantidade ajustada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /service-orders:
+    get:
+      operationId: listServiceOrders
+      tags: [service-orders]
+      summary: Pátio (RF-05)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: "#/components/schemas/ServiceOrderStatus" }
+          style: form
+          explode: true
+        - name: after
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Pátio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderList"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: postServiceOrder
+      tags: [service-orders]
+      summary: Cria OS (RF-07)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceOrderCreate"
+      responses:
+        "201":
+          description: OS criada, status aberta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderDetail"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Veículo já possui OS aberta ou em_andamento
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /service-orders/{id}:
+    get:
+      operationId: getServiceOrder
+      tags: [service-orders]
+      summary: Detalhe da OS (RF-09)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Detalhe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderDetail"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: patchServiceOrder
+      tags: [service-orders]
+      summary: Muda status da OS (RF-10)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/ServiceOrderStatus" }
+      responses:
+        "200":
+          description: OS atualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderDetail"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: Transição de status inválida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /service-orders/{id}/items:
+    post:
+      operationId: postServiceOrderItem
+      tags: [service-orders]
+      summary: >-
+        Adiciona item (peça ou serviço, sem preço) (RF-11). Se `produtoId`
+        for informado, decrementa o estoque na mesma transação (RF-11a).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceOrderItemCreate"
+      responses:
+        "201":
+          description: Item criado (e estoque decrementado, se aplicável)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderItem"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          description: OS concluída/cancelada não recebe item, ou ESTOQUE_INSUFICIENTE (RF-11a)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
+  /service-orders/{id}/items/{itemId}:
+    patch:
+      operationId: patchServiceOrderItem
+      tags: [service-orders]
+      summary: Edita item (RF-11)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                descricao: { type: string }
+                quantidade: { type: number }
+      responses:
+        "200":
+          description: Item atualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceOrderItem"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteServiceOrderItem
+      tags: [service-orders]
+      summary: Remove item (RF-11)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Removido
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /service-orders/{id}/telemetry:
+    post:
+      operationId: postServiceOrderTelemetry
+      tags: [telemetry]
+      summary: Anexa snapshot de telemetria à OS (RF-13). Fluxo contínuo vai por MQTT — ver mqtt-topics.md (RF-14).
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelemetrySnapshotCreate"
+      responses:
+        "201":
+          description: Snapshot anexado à OS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetrySnapshot"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          $ref: "#/components/responses/Error"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Error:
+      description: Erro padrão
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+
+  schemas:
+    ErrorBody:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: VALIDATION_ERROR }
+            message: { type: string }
+            fields:
+              type: object
+              additionalProperties: { type: string }
+
+    LoginRequest:
+      type: object
+      required: [email, senha]
+      properties:
+        email: { type: string, format: email }
+        senha: { type: string, minLength: 8 }
+
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+
+    AuthResponse:
+      allOf:
+        - $ref: "#/components/schemas/TokenPair"
+        - type: object
+          required: [usuario]
+          properties:
+            usuario: { $ref: "#/components/schemas/Usuario" }
+
+    Usuario:
+      type: object
+      required: [id, nome, email]
+      properties:
+        id: { type: string }
+        nome: { type: string }
+        email: { type: string, format: email }
+
+    CustomerCreate:
+      type: object
+      required: [nome]
+      properties:
+        nome: { type: string, maxLength: 200 }
+        telefone: { type: string, maxLength: 20 }
+
+    Customer:
+      allOf:
+        - $ref: "#/components/schemas/CustomerCreate"
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+
+    CustomerList:
+      type: object
+      required: [items, paging]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Customer" }
+        paging: { $ref: "#/components/schemas/Paging" }
+
+    VehicleCreate:
+      type: object
+      required: [customerId, placa]
+      properties:
+        customerId: { type: string }
+        placa: { type: string, maxLength: 8 }
+        marca: { type: string }
+        modelo: { type: string }
+        ano: { type: integer }
+        cor: { type: string }
+        kmReferencia: { type: integer, description: "Só usado até a primeira leitura de telemetria (RF-04)" }
+
+    Vehicle:
+      allOf:
+        - $ref: "#/components/schemas/VehicleCreate"
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+
+    VehicleList:
+      type: object
+      required: [items, paging]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Vehicle" }
+        paging: { $ref: "#/components/schemas/Paging" }
+
+    ProductCreate:
+      type: object
+      required: [nome, quantidadeEstoque]
+      properties:
+        nome: { type: string, maxLength: 200 }
+        quantidadeEstoque: { type: integer, minimum: 0 }
+
+    Product:
+      allOf:
+        - $ref: "#/components/schemas/ProductCreate"
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+
+    ProductList:
+      type: object
+      required: [items, paging]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+        paging: { $ref: "#/components/schemas/Paging" }
+
+    ServiceOrderStatus:
+      type: string
+      enum: [aberta, em_andamento, concluida, cancelada]
+
+    ServiceOrderCreate:
+      type: object
+      required: [customerId, vehicleId]
+      properties:
+        customerId: { type: string }
+        vehicleId: { type: string }
+        descricao: { type: string }
+
+    ServiceOrderCard:
+      type: object
+      required: [id, status, placa, clienteNome]
+      properties:
+        id: { type: string }
+        status: { $ref: "#/components/schemas/ServiceOrderStatus" }
+        placa: { type: string }
+        clienteNome: { type: string }
+        marca: { type: string }
+        modelo: { type: string }
+        temDtcNaUltimaLeitura: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    ServiceOrderDetail:
+      allOf:
+        - $ref: "#/components/schemas/ServiceOrderCard"
+        - type: object
+          properties:
+            descricao: { type: string }
+            itens:
+              type: array
+              items: { $ref: "#/components/schemas/ServiceOrderItem" }
+            ultimaTelemetria:
+              $ref: "#/components/schemas/TelemetrySnapshot"
+            concluidaAt: { type: string, format: date-time, nullable: true }
+
+    ServiceOrderList:
+      type: object
+      required: [items, paging]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ServiceOrderCard" }
+        paging: { $ref: "#/components/schemas/Paging" }
+
+    ServiceOrderItemCreate:
+      type: object
+      required: [tipo, descricao]
+      properties:
+        tipo: { type: string, enum: [peca, servico] }
+        descricao: { type: string, maxLength: 300 }
+        produtoId:
+          type: string
+          nullable: true
+          description: >-
+            Só para tipo=peca vinda do estoque (RF-19). Ausente/null = peça
+            avulsa sem baixa de estoque, ou item tipo=servico.
+        quantidade: { type: number, minimum: 0 }
+
+    ServiceOrderItem:
+      allOf:
+        - $ref: "#/components/schemas/ServiceOrderItemCreate"
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id: { type: string }
+            createdAt: { type: string, format: date-time }
+
+    TelemetrySnapshotCreate:
+      type: object
+      required: [km, capturadoEm]
+      properties:
+        km: { type: integer }
+        temperaturaMotor: { type: number, description: "°C" }
+        tensaoBateria: { type: number, description: "V" }
+        dtcs:
+          type: array
+          items: { type: string }
+        capturadoEm: { type: string, format: date-time }
+
+    TelemetrySnapshot:
+      allOf:
+        - $ref: "#/components/schemas/TelemetrySnapshotCreate"
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string }
+
+    Paging:
+      type: object
+      required: [hasMore]
+      properties:
+        nextCursor: { type: string, nullable: true }
+        hasMore: { type: boolean }

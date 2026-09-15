@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Corrija os campos destacados.",
+    "fields": {
+      "vehicleId": "obrigatório"
+    }
+  }
+}
