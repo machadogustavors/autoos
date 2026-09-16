@@ -12,6 +12,7 @@ import { paginate, resolveLimit } from '../common/pagination';
 import { CreateServiceOrderDto } from './dto/create-service-order.dto';
 import { CreateServiceOrderItemDto } from './dto/create-service-order-item.dto';
 import { UpdateServiceOrderItemDto } from './dto/update-service-order-item.dto';
+import { CreateTelemetrySnapshotDto } from './dto/create-telemetry-snapshot.dto';
 
 // RF-10 — máquina de estados. completed/cancelled são terminais.
 const ALLOWED_TRANSITIONS: Record<ServiceOrderStatus, ServiceOrderStatus[]> = {
@@ -239,6 +240,38 @@ export class ServiceOrdersService {
   async removeItem(orderId: string, itemId: string) {
     await this.findItemOrThrow(orderId, itemId);
     await this.prisma.serviceOrderItem.delete({ where: { id: itemId } });
+  }
+
+  // RF-13 — snapshot pontual anexado à OS. A quilometragem da leitura
+  // passa a ser a referência do veículo (substitui o valor cadastrado
+  // manualmente em RF-04). O fluxo contínuo/bruto (RF-14) não passa por
+  // aqui — vai direto do app pro LARCC via MQTT, fora da API.
+  async addTelemetrySnapshot(orderId: string, dto: CreateTelemetrySnapshotDto) {
+    const order = await this.prisma.serviceOrder.findUnique({
+      where: { id: orderId },
+    });
+    if (!order) {
+      throw new NotFoundException('OS não encontrada.');
+    }
+
+    const [snapshot] = await this.prisma.$transaction([
+      this.prisma.telemetrySnapshot.create({
+        data: {
+          serviceOrderId: orderId,
+          mileage: dto.mileage,
+          engineTemperature: dto.engineTemperature,
+          batteryVoltage: dto.batteryVoltage,
+          dtcCodes: dto.dtcCodes ?? [],
+          capturedAt: new Date(dto.capturedAt),
+        },
+      }),
+      this.prisma.vehicle.update({
+        where: { id: order.vehicleId },
+        data: { referenceMileage: dto.mileage },
+      }),
+    ]);
+
+    return snapshot;
   }
 
   private async findItemOrThrow(orderId: string, itemId: string) {

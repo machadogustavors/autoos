@@ -17,6 +17,7 @@ import { UpdateServiceOrderStatusDto } from './dto/update-service-order-status.d
 import { CreateServiceOrderItemDto } from './dto/create-service-order-item.dto';
 import { UpdateServiceOrderItemDto } from './dto/update-service-order-item.dto';
 import { ListServiceOrdersQueryDto } from './dto/list-service-orders-query.dto';
+import { CreateTelemetrySnapshotDto } from './dto/create-telemetry-snapshot.dto';
 import { CurrentUser } from '../common/decorators';
 import type { CurrentUserPayload } from '../common/decorators';
 
@@ -104,5 +105,15 @@ export class ServiceOrdersController {
     @Param('itemId') itemId: string,
   ) {
     await this.serviceOrdersService.removeItem(orderId, itemId);
+  }
+
+  // postServiceOrderTelemetry (RF-13) — snapshot pontual. O fluxo contínuo
+  // (RF-14) não passa pela API, vai direto do app pro LARCC via MQTT.
+  @Post(':id/telemetry')
+  addTelemetry(
+    @Param('id') orderId: string,
+    @Body() dto: CreateTelemetrySnapshotDto,
+  ) {
+    return this.serviceOrdersService.addTelemetrySnapshot(orderId, dto);
   }
 }

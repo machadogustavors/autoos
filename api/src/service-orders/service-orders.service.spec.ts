@@ -42,6 +42,8 @@ interface MockPrisma {
   };
   idempotencyKey: { findUnique: jest.Mock; create: jest.Mock };
   product: { updateMany: jest.Mock; findUnique: jest.Mock };
+  vehicle: { update: jest.Mock };
+  telemetrySnapshot: { create: jest.Mock };
   $transaction: jest.Mock;
 }
 
@@ -73,10 +75,17 @@ describe('ServiceOrdersService', () => {
         create: jest.fn(),
       },
       product: { updateMany: jest.fn(), findUnique: jest.fn() },
+      vehicle: { update: jest.fn() },
+      telemetrySnapshot: { create: jest.fn() },
       $transaction: jest.fn(),
     };
-    prisma.$transaction.mockImplementation((fn: (tx: MockPrisma) => unknown) =>
-      fn(prisma),
+    // $transaction aparece nas duas formas do Prisma: callback (baixa de
+    // estoque) e array de promises (snapshot de telemetria + atualização
+    // de km do veículo).
+    prisma.$transaction.mockImplementation((arg: unknown) =>
+      Array.isArray(arg)
+        ? Promise.all(arg)
+        : (arg as (tx: MockPrisma) => unknown)(prisma),
     );
 
     vehiclesService = {
@@ -279,6 +288,67 @@ describe('ServiceOrdersService', () => {
         response: { error: { code: 'INSUFFICIENT_STOCK' } },
       });
       expect(prisma.serviceOrderItem.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('addTelemetrySnapshot (RF-13)', () => {
+    const dto = {
+      mileage: 84213,
+      engineTemperature: 91,
+      batteryVoltage: 12.6,
+      dtcCodes: ['P0301'],
+      capturedAt: '2026-10-14T14:32:01-03:00',
+    };
+
+    it('rejects when the order does not exist', async () => {
+      prisma.serviceOrder.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.addTelemetrySnapshot('os-1', dto),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('creates the snapshot and updates the vehicle reference mileage in the same transaction', async () => {
+      prisma.serviceOrder.findUnique.mockResolvedValue(
+        baseOrderRow({ vehicleId: 'v1' }),
+      );
+      prisma.telemetrySnapshot.create.mockResolvedValue({
+        id: 'snap-1',
+        ...dto,
+      });
+      prisma.vehicle.update.mockResolvedValue({
+        id: 'v1',
+        referenceMileage: dto.mileage,
+      });
+
+      const result = await service.addTelemetrySnapshot('os-1', dto);
+
+      expect(result.id).toBe('snap-1');
+      expect(prisma.vehicle.update).toHaveBeenCalledWith({
+        where: { id: 'v1' },
+        data: { referenceMileage: dto.mileage },
+      });
+    });
+
+    it('defaults dtcCodes to an empty array, never omitting the field', async () => {
+      prisma.serviceOrder.findUnique.mockResolvedValue(
+        baseOrderRow({ vehicleId: 'v1' }),
+      );
+      prisma.telemetrySnapshot.create.mockResolvedValue({ id: 'snap-2' });
+      prisma.vehicle.update.mockResolvedValue({});
+
+      await service.addTelemetrySnapshot('os-1', {
+        mileage: 100,
+        capturedAt: dto.capturedAt,
+      });
+
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment -- expect.objectContaining() é `any` no @types/jest */
+      expect(prisma.telemetrySnapshot.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ dtcCodes: [] }),
+        }),
+      );
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     });
   });
 });

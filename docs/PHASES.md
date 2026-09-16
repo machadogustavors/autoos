@@ -56,9 +56,15 @@ Validado: `nest build`, `eslint` e `jest` (34 testes — 13 novos cobrindo cria�
 
 ## Fase 6 — Telemetria (snapshot transacional)
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-`postServiceOrderTelemetry` (RF-13): snapshot anexado à OS, atualização da quilometragem de referência do veículo, exposição em `ServiceOrderDetail.lastTelemetry` e `ServiceOrderCard.hasDtcOnLastReading`.
+`postServiceOrderTelemetry` (RF-13): snapshot anexado à OS e atualização de `vehicles.reference_mileage` na **mesma transação** (`$transaction` em array — a leitura vira a referência do veículo, substituindo o valor cadastrado manualmente em RF-04). `dtcCodes` sempre `[]`, nunca omitido, mesmo sem código ativo.
+
+A leitura (`lastTelemetry` em `ServiceOrderDetail`, `hasDtcOnLastReading` em `ServiceOrderCard`) já tinha sido implementada na Fase 5 via `include: { telemetrySnapshots: {...} }` — esta fase só precisou acrescentar o lado da escrita; nada foi retrabalhado no mapeamento.
+
+**Lembrete de escopo:** isto é só o snapshot pontual. O fluxo contínuo/bruto (RF-14, MQTT → LARCC) não passa pela API — é publicado direto pelo app, e vive fora deste backend (ver `contract/mqtt-topics.md`).
+
+Validado: `nest build`, `eslint` e `jest` (37 testes — 3 novos) rodam limpos.
 
 ## Fase 7 — Testes automatizados
 
