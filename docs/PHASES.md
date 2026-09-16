@@ -28,9 +28,13 @@ Validado: `nest build`, `eslint` e `jest` (9 testes: health + `AuthService.login
 
 ## Fase 3 — Clientes e veículos
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-`CustomersModule` (RF-03) e `VehiclesModule` (RF-04): cadastro rápido, busca por nome/placa, unicidade de placa com 409.
+`CustomersModule` (RF-03) e `VehiclesModule` (RF-04): cadastro rápido, busca por nome/telefone (`listCustomers`) ou placa (`listVehicles`), placa validada por regex (padrão antigo ou Mercosul), veículo **reaproveitado** se a placa já existir para o mesmo cliente, 409 se pertencer a outro. Paginação por cursor (`common/pagination.ts`) extraída como utilitário compartilhado — todo `list*` futuro (produtos, OS) reaproveita.
+
+`GET /vehicles/{id}/service-orders` (RF-18) fica pra Fase 5, quando `ServiceOrdersModule` existir.
+
+Validado: `nest build`, `eslint` e `jest` (18 testes) rodam limpos.
 
 ## Fase 4 — Estoque
 
