@@ -38,9 +38,11 @@ Validado: `nest build`, `eslint` e `jest` (18 testes) rodam limpos.
 
 ## Fase 4 — Estoque
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-`ProductsModule` (RF-19/RF-20): consulta e cadastro/ajuste de quantidade.
+`ProductsModule` (RF-19/RF-20): `listProducts` (busca por nome), `postProduct` (cadastro), `patchProduct` (ajuste **absoluto** de `stockQuantity`, não delta — reposição manual ou correção de uma baixa indevida da RF-11a). `ProductsService.findOneOrThrow` exportado para a Fase 5 usar na baixa transacional de item de OS.
+
+Validado: `nest build`, `eslint` e `jest` (21 testes) rodam limpos.
 
 ## Fase 5 — Ordens de serviço e itens
 
