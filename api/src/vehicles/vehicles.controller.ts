@@ -3,8 +3,9 @@ import { VehiclesService } from './vehicles.service';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { ListVehiclesQueryDto } from './dto/list-vehicles-query.dto';
 
-// GET /vehicles/{id}/service-orders (RF-18, listVehicleServiceOrders) entra
-// junto do ServiceOrdersModule — ver docs/PHASES.md, Fase 5.
+// GET /vehicles/{id}/service-orders (RF-18) vive em
+// service-orders/vehicle-service-orders.controller.ts, não aqui — evita
+// dependência circular entre VehiclesModule e ServiceOrdersModule.
 @Controller('vehicles')
 export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}

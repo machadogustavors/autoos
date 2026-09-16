@@ -46,9 +46,13 @@ Validado: `nest build`, `eslint` e `jest` (21 testes) rodam limpos.
 
 ## Fase 5 — Ordens de serviço e itens
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-`ServiceOrdersModule` (RF-05 a RF-11a): pátio paginado, criação com `Idempotency-Key` e regra de uma OS ativa por veículo, máquina de estados, itens com baixa automática de estoque transacional.
+`ServiceOrdersModule` (RF-05 a RF-11a, RF-18): pátio paginado com filtro de status (padrão: `open`+`in_progress`), `postServiceOrder` idempotente com regra de uma OS ativa por veículo (409), máquina de estados RF-10 (transições fora da lista viram 409, inclusive pular `in_progress`), itens com baixa de estoque **atômica e à prova de corrida** (`UPDATE ... WHERE stock_quantity >= quantity`, não um read-then-write ingênuo — RNF-16), `listVehicleServiceOrders` (RF-18) num controller próprio pra não criar dependência circular entre `ServiceOrdersModule` e `VehiclesModule`.
+
+Infra nova nesta fase, motivada diretamente pelo `INSUFFICIENT_STOCK` da RF-11a: `IdempotencyService` compartilhado (`common/idempotency.service.ts`, usado por `postServiceOrder` e `postServiceOrderItem`) e um `HttpExceptionFilter` global que reformata toda exceção pro formato do contrato (`{ error: { code, message, fields? } }`, SPEC §5.3) — inclusive extraindo `fields` das mensagens do `class-validator`.
+
+Validado: `nest build`, `eslint` e `jest` (34 testes — 13 novos cobrindo criação, transição de estado e a baixa de estoque, incluindo o caminho de estoque insuficiente) rodam limpos.
 
 ## Fase 6 — Telemetria (snapshot transacional)
 
