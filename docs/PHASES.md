@@ -18,9 +18,13 @@ Validado nesta fase: `npm install`, `prisma generate`, `nest build`, `eslint` e 
 
 ## Fase 2 — Autenticação (Google Sign-In + refresh token)
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-`AuthModule`: `postLogin` (verifica `idToken` do Google via `google-auth-library`, casa e-mail com usuário já existente, sem auto-cadastro), `postRefreshToken` (rotação com detecção de reuso), `getMe`, guard global de JWT, página `GET /dev/login`.
+`AuthModule`: `postLogin` (verifica `idToken` do Google via `google-auth-library`, casa e-mail com usuário já existente, sem auto-cadastro — 403 se não achar), vincula `googleSub` no primeiro login bem-sucedido, `postRefreshToken` (rotação: token usado é marcado `revokedAt`; reapresentar um token revogado derruba **todos** os tokens daquele usuário), `getMe`, `JwtAuthGuard` global (respeita `@Public()`), página `GET /dev/login` (fora do prefixo `/v1`, replicando o padrão do conecta-campus).
+
+Decisão de implementação: `GOOGLE_CLIENT_ID` só é checado dentro do `AuthService` (na hora do login), não no bootstrap da API — assim a API sobe e o resto dos módulos continua desenvolvível mesmo sem a credencial (`JWT_SECRET`, esse sim, ainda falha rápido no `JwtStrategy`, por proteger toda rota, não só o login).
+
+Validado: `nest build`, `eslint` e `jest` (9 testes: health + `AuthService.login`/`.refresh`, incluindo o caso de reuso de refresh token) rodam limpos. **Não validado:** `POST /v1/auth/login` ponta a ponta contra o Google real — sem `GOOGLE_CLIENT_ID`, isso é esperado (ver `.env.example`).
 
 ## Fase 3 — Clientes e veículos
 

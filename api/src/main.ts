@@ -12,7 +12,8 @@ async function bootstrap() {
   // proteger — mas /dev/login (AGENTS.md) roda no navegador em dev.
   app.enableCors();
 
-  app.setGlobalPrefix('v1');
+  // /dev/login fica fora do /v1 de propósito: não é rota de produto (AGENTS.md).
+  app.setGlobalPrefix('v1', { exclude: ['dev/login'] });
 
   app.useGlobalPipes(
     new ValidationPipe({
