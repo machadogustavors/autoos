@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { formatDate } from '../format';
 import { services } from '../state/services';
 import { useOnline } from '../state/useOnline';
 import { useResource } from '../state/useResource';
@@ -52,13 +53,6 @@ export function VehicleHistoryScreen({ navigation, route }: Props) {
         : null}
     </Screen>
   );
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return 'Data indisponível';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return 'Data indisponível';
-  return date.toLocaleDateString('pt-BR');
 }
 
 const styles = StyleSheet.create({

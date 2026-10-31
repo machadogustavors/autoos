@@ -67,7 +67,11 @@ npm run android                  # dev client; BLE não funciona no Expo Go
 npm test && npm run typecheck && npx eslint .
 ```
 
-Precisa do Android SDK e de um aparelho (ou emulador com Google Play). Só Android na V1 (RNF-15).
+Precisa do Android SDK e de um aparelho (ou emulador com Google Play). Só Android na V1 (RNF-15). O emulador não tem Bluetooth: a tela de pareamento só funciona num celular real.
+
+Login Google: crie no Google Cloud Console um cliente OAuth **Web** (o ID vai em `GOOGLE_CLIENT_ID` na API e em `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` no app) e um cliente **Android** (pacote `br.com.autoeletricawm.autoos` + SHA-1 da keystore de debug: `keytool -list -v -keystore app/android/app/debug.keystore -alias androiddebugkey -storepass android`). O e-mail da conta tem de estar em `SEED_USER_EMAIL` e, em modo de teste, na lista de usuários de teste do Google.
+
+**Windows:** o build nativo precisa de `sdkmanager "cmake;3.31.6"` (o ninja do CMake 3.22.1 do SDK não aceita caminhos longos) e de `LongPathsEnabled=1`. Veja `docs/PHASES.md`, Fase 14.
 
 ## Status
 

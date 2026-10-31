@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { messageFor } from '../api/errors';
 import type { Product } from '../api/types';
 import { services } from '../state/services';
@@ -80,6 +80,33 @@ function ProductRow({
   const [value, setValue] = useState(String(product.stockQuantity));
   const [error, setError] = useState<string | undefined>();
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  // RF-21: confirma antes (toque errado com a mão suja não pode apagar peça).
+  function confirmRemove() {
+    Alert.alert(
+      'Excluir peça',
+      `Excluir "${product.name}" do estoque? As OS antigas que usaram essa peça não mudam.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: () => void remove() },
+      ],
+    );
+  }
+
+  async function remove() {
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      await services.products.remove(product.id);
+      onChanged();
+    } catch (e) {
+      setRemoveError(messageFor(e));
+    } finally {
+      setRemoving(false);
+    }
+  }
 
   async function save() {
     const parsed = parseStock(value);
@@ -128,14 +155,29 @@ function ProductRow({
           />
         </View>
       ) : (
-        <Button
-          label="Ajustar quantidade"
-          variant="link"
-          onPress={() => {
-            setValue(String(product.stockQuantity));
-            setEditing(true);
-          }}
-        />
+        <View style={styles.rowActions}>
+          {removeError ? <ErrorBanner message={removeError} /> : null}
+          <View style={styles.actions}>
+            <View style={styles.action}>
+              <Button
+                label="Ajustar"
+                variant="secondary"
+                onPress={() => {
+                  setValue(String(product.stockQuantity));
+                  setEditing(true);
+                }}
+              />
+            </View>
+            <View style={styles.action}>
+              <Button
+                label="Excluir"
+                variant="danger"
+                loading={removing}
+                onPress={confirmRemove}
+              />
+            </View>
+          </View>
+        </View>
       )}
     </Card>
   );
@@ -212,5 +254,8 @@ const styles = StyleSheet.create({
   // Mono é só de sensor (DESIGN.md); quantidade de estoque é texto comum.
   quantity: { ...type.headingCard, color: colors.ink },
   edit: { gap: spacing.sm },
+  rowActions: { gap: spacing.sm, marginTop: spacing.sm },
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  action: { flex: 1 },
   section: { ...type.microUppercase, color: colors.faint },
 });

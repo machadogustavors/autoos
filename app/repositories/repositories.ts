@@ -21,6 +21,7 @@ import type {
   VehicleCreate,
 } from '../api/types';
 import { Cached, fetchWithCache } from './cache';
+import { type OrderFilter, statusesFor } from './orderFilters';
 
 const isTransient = (error: unknown): boolean =>
   isApiError(error) && error.isTransient;
@@ -119,6 +120,11 @@ export class ProductRepository {
   adjust(id: string, stockQuantity: number): Promise<Product> {
     return this.api.patch(`/products/${id}`, { body: { stockQuantity } });
   }
+
+  // RF-21: exclusão lógica no servidor; OS antigas que usaram a peça não mudam.
+  remove(id: string): Promise<void> {
+    return this.api.delete(`/products/${id}`);
+  }
 }
 
 export class ServiceOrderRepository {
@@ -134,6 +140,22 @@ export class ServiceOrderRepository {
         }),
       isTransient,
     );
+  }
+
+  // RF-22: "Todas as OS". A 1ª página cai no cache offline; as seguintes
+  // (`after`) são só rede — cache de página no meio da lista envelhece mal.
+  listByStatus(
+    filter: OrderFilter,
+    after?: string,
+  ): Promise<Cached<Page<ServiceOrderCard>>> {
+    const load = () =>
+      this.api.get<Page<ServiceOrderCard>>('/service-orders', {
+        query: { status: statusesFor(filter), after, limit: 20 },
+      });
+    if (after) {
+      return load().then((data) => ({ data, fromCache: false }));
+    }
+    return fetchWithCache(`orders.${filter}`, load, isTransient);
   }
 
   detail(id: string): Promise<Cached<ServiceOrderDetail>> {

@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiError } from '../api/errors';
 import type { ServiceOrderCard, ServiceOrderDetail } from '../api/types';
@@ -14,6 +15,8 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { NewServiceOrderScreen } from '../screens/NewServiceOrderScreen';
 import { PairingScreen } from '../screens/PairingScreen';
 import { ServiceOrderDetailScreen } from '../screens/ServiceOrderDetailScreen';
+import { ServiceOrdersScreen } from '../screens/ServiceOrdersScreen';
+import { StockScreen } from '../screens/StockScreen';
 import { YardScreen } from '../screens/YardScreen';
 
 // Renderiza as telas de verdade (nunca rodaram em aparelho) com os serviços
@@ -51,10 +54,11 @@ const mockServices = {
     addItem: jest.fn(),
     removeItem: jest.fn(),
     postTelemetry: jest.fn(),
+    listByStatus: jest.fn(),
   },
   customers: { search: jest.fn(), create: jest.fn() },
   vehicles: { searchByPlate: jest.fn(), create: jest.fn(), history: jest.fn() },
-  products: { list: jest.fn() },
+  products: { list: jest.fn(), remove: jest.fn(), adjust: jest.fn() },
 };
 jest.mock('../state/services', () => ({
   get services() {
@@ -701,5 +705,208 @@ describe('Login (RF-01)', () => {
       ),
     ).toBeTruthy();
     expect(mockSignIn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Todas as OS (RF-22)', () => {
+  const page = (
+    items: ServiceOrderCard[],
+    nextCursor: string | null = null,
+  ) => ({
+    data: { items, paging: { hasMore: nextCursor !== null, nextCursor } },
+    fromCache: false,
+  });
+  const open = () => {
+    const navigation = nav();
+    return {
+      navigation,
+      view: ui(
+        <ServiceOrdersScreen
+          {...asProps<Parameters<typeof ServiceOrdersScreen>[0]>(navigation)}
+        />,
+      ),
+    };
+  };
+
+  it('opens on "Todas" and lists closed and open OS with their opening date', async () => {
+    mockServices.serviceOrders.listByStatus.mockResolvedValue(
+      page([
+        card({ id: 'a', plate: 'AAA1A11', status: 'completed' }),
+        card({ id: 'b', plate: 'BBB2B22', status: 'open' }),
+      ]),
+    );
+    await open().view;
+
+    expect(await screen.findByText('AAA1A11')).toBeTruthy();
+    expect(screen.getByText('BBB2B22')).toBeTruthy();
+    expect(screen.getByText('Concluída')).toBeTruthy();
+    expect(screen.getByText('Aberta')).toBeTruthy();
+    // data de abertura (pt-BR) em cada card
+    expect(screen.getAllByText(/\d{2}\/\d{2}\/\d{4}/)).toHaveLength(2);
+    expect(mockServices.serviceOrders.listByStatus).toHaveBeenCalledWith('all');
+  });
+
+  it('choosing a filter reloads with that status and shows the empty copy per filter', async () => {
+    mockServices.serviceOrders.listByStatus
+      .mockResolvedValueOnce(page([card({ plate: 'AAA1A11' })]))
+      .mockResolvedValueOnce(page([]));
+    await open().view;
+    await screen.findByText('AAA1A11');
+
+    await fireEvent.press(screen.getByText('Concluídas'));
+
+    expect(await screen.findByText('Nenhuma OS concluída.')).toBeTruthy();
+    expect(mockServices.serviceOrders.listByStatus).toHaveBeenLastCalledWith(
+      'completed',
+    );
+    // a lista do filtro anterior não fica na tela
+    expect(screen.queryByText('AAA1A11')).toBeNull();
+  });
+
+  it('loads the next page when the list reaches the end and appends it', async () => {
+    mockServices.serviceOrders.listByStatus
+      .mockResolvedValueOnce(
+        page([card({ id: 'a', plate: 'AAA1A11' })], 'cur-1'),
+      )
+      .mockResolvedValueOnce(page([card({ id: 'b', plate: 'BBB2B22' })]));
+    await open().view;
+    await screen.findByText('AAA1A11');
+
+    await fireEvent(screen.getByTestId('orders-list'), 'endReached');
+
+    expect(await screen.findByText('BBB2B22')).toBeTruthy();
+    expect(screen.getByText('AAA1A11')).toBeTruthy();
+    expect(mockServices.serviceOrders.listByStatus).toHaveBeenLastCalledWith(
+      'all',
+      'cur-1',
+    );
+  });
+
+  it('does not ask for another page when there is none', async () => {
+    mockServices.serviceOrders.listByStatus.mockResolvedValue(
+      page([card({ id: 'a', plate: 'AAA1A11' })]),
+    );
+    await open().view;
+    await screen.findByText('AAA1A11');
+
+    await fireEvent(screen.getByTestId('orders-list'), 'endReached');
+
+    expect(mockServices.serviceOrders.listByStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failure loading more keeps the list and offers retry', async () => {
+    mockServices.serviceOrders.listByStatus
+      .mockResolvedValueOnce(
+        page([card({ id: 'a', plate: 'AAA1A11' })], 'cur-1'),
+      )
+      .mockRejectedValueOnce(new ApiError(0, 'NETWORK', 'x'))
+      .mockResolvedValueOnce(page([card({ id: 'b', plate: 'BBB2B22' })]));
+    await open().view;
+    await screen.findByText('AAA1A11');
+
+    await fireEvent(screen.getByTestId('orders-list'), 'endReached');
+    expect(await screen.findByText('Sem conexão. Tente de novo.')).toBeTruthy();
+    expect(screen.getByText('AAA1A11')).toBeTruthy();
+
+    await fireEvent.press(screen.getByText('Tentar novamente'));
+    expect(await screen.findByText('BBB2B22')).toBeTruthy();
+  });
+
+  it('first-page error: section banner with retry, never a blank screen', async () => {
+    mockServices.serviceOrders.listByStatus
+      .mockRejectedValueOnce(new ApiError(500, 'INTERNAL', 'boom'))
+      .mockResolvedValueOnce(page([card({ plate: 'AAA1A11' })]));
+    await open().view;
+
+    expect(
+      await screen.findByText('Não foi possível carregar. Tente de novo.'),
+    ).toBeTruthy();
+    await fireEvent.press(screen.getByText('Tentar novamente'));
+    expect(await screen.findByText('AAA1A11')).toBeTruthy();
+  });
+
+  it('tapping an OS (even a closed one) opens its detail', async () => {
+    mockServices.serviceOrders.listByStatus.mockResolvedValue(
+      page([card({ id: 'done-1', plate: 'AAA1A11', status: 'completed' })]),
+    );
+    const { navigation, view } = open();
+    await view;
+
+    await fireEvent.press(await screen.findByText('AAA1A11'));
+    expect(navigation.navigate).toHaveBeenCalledWith('ServiceOrderDetail', {
+      id: 'done-1',
+    });
+  });
+});
+
+describe('Estoque: excluir peça (RF-21)', () => {
+  const product = {
+    id: 'p1',
+    name: 'Bateria 60Ah',
+    stockQuantity: 4,
+    createdAt: '2026-10-01T10:00:00-03:00',
+  };
+  const list = (items = [product]) => ({
+    data: { items, paging: { hasMore: false } },
+    fromCache: false,
+  });
+  // O spy acumula chamadas entre testes: sem restaurar, calls[0] seria de outra tela.
+  afterEach(() => jest.restoreAllMocks());
+  const spyAlert = () =>
+    jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+
+  it('asks for confirmation before deleting and does nothing on Cancelar', async () => {
+    mockServices.products.list.mockResolvedValue(list());
+    const alert = spyAlert();
+    await ui(<StockScreen />);
+
+    await fireEvent.press(await screen.findByText('Excluir'));
+
+    expect(alert).toHaveBeenCalledTimes(1);
+    const [title, message, buttons] = alert.mock.calls[0] ?? [];
+    expect(title).toBe('Excluir peça');
+    expect(message).toContain('Bateria 60Ah');
+    expect(message).toContain('OS antigas');
+    buttons?.find((b) => b.style === 'cancel')?.onPress?.();
+    expect(mockServices.products.remove).not.toHaveBeenCalled();
+  });
+
+  it('confirming deletes the part and refreshes the list', async () => {
+    mockServices.products.list
+      .mockResolvedValueOnce(list())
+      .mockResolvedValueOnce(list([]));
+    mockServices.products.remove.mockResolvedValue(undefined);
+    const alert = spyAlert();
+    await ui(<StockScreen />);
+
+    await fireEvent.press(await screen.findByText('Excluir'));
+    alert.mock.calls[0]?.[2]
+      ?.find((b) => b.style === 'destructive')
+      ?.onPress?.();
+
+    await waitFor(() =>
+      expect(mockServices.products.remove).toHaveBeenCalledWith('p1'),
+    );
+    expect(await screen.findByText(/Nenhuma peça cadastrada/)).toBeTruthy();
+    expect(screen.queryByText('Bateria 60Ah')).toBeNull();
+  });
+
+  it('a failed delete explains and keeps the part on screen', async () => {
+    mockServices.products.list.mockResolvedValue(list());
+    mockServices.products.remove.mockRejectedValue(
+      new ApiError(404, 'NOT_FOUND', 'x'),
+    );
+    const alert = spyAlert();
+    await ui(<StockScreen />);
+
+    await fireEvent.press(await screen.findByText('Excluir'));
+    alert.mock.calls[0]?.[2]
+      ?.find((b) => b.style === 'destructive')
+      ?.onPress?.();
+
+    expect(
+      await screen.findByText('Não encontrado. Pode ter sido removido.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Bateria 60Ah')).toBeTruthy();
   });
 });

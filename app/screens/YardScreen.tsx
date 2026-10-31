@@ -1,18 +1,16 @@
 import { useLayoutEffect } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { ServiceOrderCard } from '../api/types';
 import { services } from '../state/services';
 import { useSession } from '../state/session';
 import { useOnline } from '../state/useOnline';
 import { useReloadOnFocus } from '../state/useReloadOnFocus';
 import { useResource } from '../state/useResource';
-import { colors, contentMaxWidth, spacing, type } from '../theme/tokens';
+import { contentMaxWidth, spacing } from '../theme/tokens';
 import { ErrorBanner } from '../ui/Banner';
 import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { DtcChip, StatusChip } from '../ui/Chip';
 import { Screen } from '../ui/Screen';
+import { ServiceOrderListItem } from '../ui/ServiceOrderListItem';
 import { EmptyState, SkeletonCards } from '../ui/States';
 import type { RootStackParamList } from './Navigation';
 
@@ -32,6 +30,11 @@ export function YardScreen({ navigation }: Props) {
     navigation.setOptions({
       headerRight: () => (
         <View style={styles.headerActions}>
+          <Button
+            label="Todas"
+            variant="link"
+            onPress={() => navigation.navigate('ServiceOrders')}
+          />
           <Button
             label="Estoque"
             variant="link"
@@ -80,7 +83,7 @@ export function YardScreen({ navigation }: Props) {
           keyExtractor={(o) => o.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <YardCard
+            <ServiceOrderListItem
               order={item}
               onPress={() =>
                 navigation.navigate('ServiceOrderDetail', { id: item.id })
@@ -95,32 +98,6 @@ export function YardScreen({ navigation }: Props) {
   );
 }
 
-function YardCard({
-  order,
-  onPress,
-}: {
-  order: ServiceOrderCard;
-  onPress: () => void;
-}) {
-  const vehicle = [order.brand, order.model].filter(Boolean).join(' ');
-  return (
-    <Card onPress={onPress}>
-      <View style={styles.cardBody}>
-        <Text style={styles.plate} numberOfLines={1}>
-          {order.plate}
-        </Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          {[order.customerName, vehicle].filter(Boolean).join(' · ')}
-        </Text>
-        <View style={styles.chips}>
-          <StatusChip status={order.status} />
-          {order.hasDtcOnLastReading ? <DtcChip /> : null}
-        </View>
-      </View>
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', gap: spacing.md },
   list: {
@@ -128,8 +105,4 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: contentMaxWidth,
   },
-  cardBody: { gap: spacing.xxs },
-  plate: { ...type.headingCard, color: colors.ink },
-  meta: { ...type.bodySm, color: colors.muted },
-  chips: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xs },
 });

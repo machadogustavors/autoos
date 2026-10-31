@@ -152,6 +152,27 @@ Implantação: `api/Dockerfile` (multi-stage, usuário não-root, `prisma migrat
 
 Pontos conhecidos, não corrigidos: mensagens de 401/404 padrão do Nest saem em inglês (`"Unauthorized"`) — o app não as exibe, mas o contrato pede português; um JWT válido de usuário apagado do banco dá 500 em `/v1/me` em vez de 401; "uma OS ativa por veículo" é checada no service, sem índice único parcial, então duas criações simultâneas com chaves diferentes poderiam passar.
 
+## Fase 14 — Primeira execução no emulador, excluir peça e "Todas as OS"
+
+**Status:** ✅ concluída
+
+O app rodou pela primeira vez num emulador Android (Pixel, Google Play): build do dev client, login real com a conta Google, Pátio, estoque. Foi preciso resolver o build nativo no Windows, que tinha três problemas que ninguém veria sem compilar:
+
+- `react-native-bluetooth-classic` não compilava (o Android Gradle Plugin novo não gera `BuildConfig` em bibliotecas). Corrigido por um config plugin, `app/plugins/withBluetoothClassicBuildConfig.js`, sem tocar em `node_modules`.
+- O build C++ do React Native estourava o limite de 260 caracteres de caminho: o Windows já tinha `LongPathsEnabled`, mas o `ninja` 1.10 do CMake 3.22.1 do SDK não o usa. Corrigido apontando o app para o CMake 3.31.6 (ninja 1.12), via `app/plugins/withNewerCmake.js`. **Requer** `sdkmanager "cmake;3.31.6"` na máquina.
+- Um `subst` para encurtar o caminho **não** resolve (o Node devolve alguns caminhos como `E:\` e o build mistura as raízes); não usar.
+
+Funcionalidades pedidas depois de usar o app (contrato e SPEC primeiro, teste antes do código):
+
+- **RF-21 · Excluir peça** (`deleteProduct`, `DELETE /v1/products/{id}`, 204). Exclusão **lógica** (`products.deleted_at`, migration `product_soft_delete`): a peça some da lista e da busca, e não aceita ajuste nem item novo (404); as OS antigas que a usaram continuam com o item. O filtro `deleted_at IS NULL` está na própria baixa atômica de estoque, não só numa checagem depois. No app, o botão Excluir pede confirmação.
+- **RF-22 · "Todas as OS"**: tela nova com filtro (Todas, Abertas, Em andamento, Concluídas, Canceladas), data de abertura, vazio por filtro, paginação ao rolar e erro de "carregar mais" sem perder a lista. Não precisou de endpoint novo: usa `listServiceOrders` com `status` repetido (o padrão do servidor, sem `status`, esconde as fechadas, então "Todas" envia os quatro).
+
+Validado: contra o Postgres real (exclusão com OS antiga intacta, 404 em peça excluída, uso em item novo bloqueado); no emulador (as duas telas, o diálogo de confirmação e a exclusão de fato, conferida no banco); testes (API 52 + 10 e2e, app 134).
+
+Lição para quem mexe no schema: no Prisma 7, `migrate dev` **não** regenera o client. Rode `npx prisma generate` e rebuilde, senão o servidor sobe com o client antigo e dá 500 (aconteceu nesta fase).
+
+**Não validado:** BLE/Bluetooth no emulador (ele não tem Bluetooth); o restante do loop de pareamento continua dependendo de um celular real e do ESP32.
+
 ## O que não vai ficar pronto para produção nesta rodada (por design, não por atraso)
 
 - **Credenciais reais** (Google OAuth, broker LARCC) — fora do escopo desta rodada, conforme combinado.

@@ -8,6 +8,7 @@ import { LoginScreen } from './LoginScreen';
 import { NewServiceOrderScreen } from './NewServiceOrderScreen';
 import { PairingScreen } from './PairingScreen';
 import { ServiceOrderDetailScreen } from './ServiceOrderDetailScreen';
+import { ServiceOrdersScreen } from './ServiceOrdersScreen';
 import { StockScreen } from './StockScreen';
 import { VehicleHistoryScreen } from './VehicleHistoryScreen';
 import { YardScreen } from './YardScreen';
@@ -15,6 +16,7 @@ import { YardScreen } from './YardScreen';
 export type RootStackParamList = {
   Login: undefined;
   Yard: undefined;
+  ServiceOrders: undefined;
   NewServiceOrder: undefined;
   ServiceOrderDetail: { id: string };
   AddItem: { serviceOrderId: string };
@@ -80,6 +82,11 @@ export function Navigation() {
               name="Yard"
               component={YardScreen}
               options={{ title: 'Pátio' }}
+            />
+            <Stack.Screen
+              name="ServiceOrders"
+              component={ServiceOrdersScreen}
+              options={{ title: 'Todas as OS' }}
             />
             <Stack.Screen
               name="NewServiceOrder"
