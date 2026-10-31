@@ -40,10 +40,26 @@ describe('parseReadingPayload (RF-13)', () => {
     ['non-numeric PID', { ...valid, rpm: '2150' }],
     ['malformed DTC', { ...valid, dtcCodes: ['XYZ'] }],
     ['dtcCodes not an array', { ...valid, dtcCodes: 'P0301' }],
-    ['missing capturedAt', { ...valid, capturedAt: undefined }],
     ['invalid capturedAt', { ...valid, capturedAt: 'ontem' }],
   ])('discards the whole reading on %s', (_name, payload) => {
     expect(parseReadingPayload(JSON.stringify(payload))).toBeNull();
+  });
+
+  it('stamps the arrival time when the device has no clock (capturedAt omitted)', () => {
+    const { capturedAt: _omit, ...noClock } = valid;
+    const reading = parseReadingPayload(
+      JSON.stringify(noClock),
+      '2026-10-31T12:00:00.000Z',
+    );
+    expect(reading?.capturedAt).toBe('2026-10-31T12:00:00.000Z');
+  });
+
+  it('keeps the device timestamp when it sends one', () => {
+    const reading = parseReadingPayload(
+      JSON.stringify(valid),
+      '2026-10-31T12:00:00.000Z',
+    );
+    expect(reading?.capturedAt).toBe(valid.capturedAt);
   });
 
   it('discards non-JSON and non-object payloads without throwing', () => {

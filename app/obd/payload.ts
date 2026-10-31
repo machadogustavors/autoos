@@ -16,7 +16,12 @@ type NumericField = keyof typeof RANGES;
 
 // Payload JSON de uma notificação BLE (mqtt-topics.md §1.1) → leitura validada.
 // null = descartar (JSON ruim, tipo errado, fora de faixa, data inválida).
-export function parseReadingPayload(text: string): ObdReading | null {
+// `receivedAt` carimba leituras de dispositivo sem relógio (o ESP32 não tem
+// RTC): o atraso do BLE é de milissegundos, irrelevante para um snapshot.
+export function parseReadingPayload(
+  text: string,
+  receivedAt: string = new Date().toISOString(),
+): ObdReading | null {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -51,9 +56,13 @@ export function parseReadingPayload(text: string): ObdReading | null {
     reading.dtcCodes = dtc as string[];
   }
 
-  if (typeof obj.capturedAt !== 'string') return null;
-  if (Number.isNaN(Date.parse(obj.capturedAt))) return null;
-  reading.capturedAt = obj.capturedAt;
+  if (obj.capturedAt === undefined) {
+    reading.capturedAt = receivedAt;
+  } else {
+    if (typeof obj.capturedAt !== 'string') return null;
+    if (Number.isNaN(Date.parse(obj.capturedAt))) return null;
+    reading.capturedAt = obj.capturedAt;
+  }
 
   return reading;
 }

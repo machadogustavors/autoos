@@ -44,7 +44,7 @@ Payload de cada notificação:
 
 Faixas aceitas pelo app (fora delas a leitura inteira é descartada, RF-13): `mileage` 0–9 999 999 km, `rpm` 0–16 383, `engineTemperature` −40–215 °C, `batteryVoltage` 0–32 V, `dtcCodes` no formato `[PCBU][0-3][0-9A-F]{3}`.
 
-Campos opcionais quando o PID correspondente não responde: `rpm`, `engineTemperature`, `batteryVoltage`. `mileage` é a leitura mais confiável e deve estar presente sempre que possível — é o campo que substitui a digitação manual (RF-13). `dtcCodes` é `[]` quando não há código ativo, nunca omitido.
+Campos opcionais quando o PID correspondente não responde: `rpm`, `engineTemperature`, `batteryVoltage`. `mileage` é a leitura mais confiável e deve estar presente sempre que possível — é o campo que substitui a digitação manual (RF-13). `dtcCodes` é `[]` quando não há código ativo, nunca omitido. `capturedAt` é opcional **neste payload BLE**: o ESP32 não tem relógio (sem RTC nem NTP), então o firmware o omite e o app carimba o horário de chegada da notificação. Dispositivo que tenha hora confiável pode mandá-lo; o app mantém o valor recebido. No payload MQTT e no snapshot HTTP `capturedAt` continua obrigatório.
 
 ### 1.2 Fallback ELM327 (Bluetooth Classic, perfil SPP)
 
