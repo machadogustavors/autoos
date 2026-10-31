@@ -10,6 +10,8 @@ export default tseslint.config(
     ignores: [
       'eslint.config.mjs',
       'babel.config.js',
+      // Config plugins do Expo (Node/CommonJS), fora do tsconfig.
+      'plugins',
       'node_modules',
       '.expo',
       'dist',
