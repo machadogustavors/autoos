@@ -127,6 +127,23 @@ Projeto PlatformIO em `device/`: firmware ESP32 expondo o serviço BLE de teleme
 
 ---
 
+## Fase 13 — Implantação e validação contra Postgres real
+
+**Status:** ✅ concluída
+
+Até aqui a API só tinha rodado com Prisma mockado. Com o Docker de pé, a migration foi gerada, aplicada e conferida contra um Postgres 16 real, e um smoke test de 34 verificações percorreu o fluxo inteiro da V1 pela API em execução: criação de cliente/veículo/OS, `Idempotency-Key`, uma OS ativa por veículo, baixa de estoque (inclusive **6 requisições paralelas disputando 3 unidades: 3 passam, 3 recebem 409, estoque termina em 0**), snapshot de telemetria atualizando `reference_mileage`, máquina de estados e histórico do veículo.
+
+Bugs reais que só apareceram assim (todos já corrigidos):
+- `npx prisma migrate dev`, o comando documentado, **falhava**: Prisma 7 exige `prisma.config.ts`. Criado, junto com a migration inicial (`prisma/migrations/`, que não existia).
+- `npm run build` gerava `dist/src/main.js` porque o `prisma/seed.ts` entrava na compilação; `npm run start:prod` (`node dist/main`) nunca funcionou. Corrigido em `tsconfig.build.json`.
+- `getMe` estava em `/v1/auth/me`; o contrato diz `/v1/me`. O app teria tomado 404 ao restaurar a sessão e deslogado o mecânico a cada abertura.
+
+Implantação: `api/Dockerfile` (multi-stage, usuário não-root, `prisma migrate deploy` antes de subir), `deploy/nginx/nginx.conf` (80 redireciona para 443; `/dev/` devolve 404), `docker-compose.prod.yml` (API + Postgres + Nginx, healthchecks). Validado subindo a pilha inteira com certificado autoassinado: migration aplicada na subida, HTTPS e redirect pelo Nginx, `/dev/login` bloqueado, chamada autenticada passando pelo proxy.
+
+**Não validado:** certificado TLS real (a pilha foi testada com autoassinado descartável; o de produção — ex.: Let's Encrypt — fica em `deploy/certs/`, fora do git); o login Google de ponta a ponta (sem `GOOGLE_CLIENT_ID`; o smoke usou JWT assinado para o usuário do seed); rodar `docker compose` num servidor de verdade; `refresh` com token rotacionado contra o banco real (coberto só por teste unitário).
+
+Pontos conhecidos, não corrigidos: mensagens de 401/404 padrão do Nest saem em inglês (`"Unauthorized"`) — o app não as exibe, mas o contrato pede português; um JWT válido de usuário apagado do banco dá 500 em `/v1/me` em vez de 401; "uma OS ativa por veículo" é checada no service, sem índice único parcial, então duas criações simultâneas com chaves diferentes poderiam passar.
+
 ## O que não vai ficar pronto para produção nesta rodada (por design, não por atraso)
 
 - **Credenciais reais** (Google OAuth, broker LARCC) — fora do escopo desta rodada, conforme combinado.

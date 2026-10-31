@@ -47,6 +47,17 @@ cd api && npm install && npx prisma migrate dev && npm run start:dev
 
 Sem app Android ainda: abra `http://localhost:3000/dev/login` (conta Google), copie o `idToken` e mande em `POST /v1/auth/login`. O e-mail precisa já existir em `users` (seed da migration) — login com Google não cria conta nova. Não use `idToken: "dev"`. O Android, depois, manda o mesmo JSON.
 
+## Implantação
+
+```bash
+cp api/.env.example api/.env      # DATABASE_URL com host autoos-db; JWT_SECRET forte; GOOGLE_CLIENT_ID
+mkdir -p deploy/certs             # fullchain.pem e privkey.pem (fora do git)
+POSTGRES_PASSWORD=... docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec api npx prisma db seed   # usuário inicial (SEED_USER_EMAIL)
+```
+
+API + Postgres + Nginx; a porta 80 só redireciona para HTTPS e `/dev/login` não é exposto.
+
 ## App local
 
 ```bash

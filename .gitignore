@@ -1,0 +1,2 @@
+# Produção: certificados TLS e env nunca vão para o git
+deploy/certs/
