@@ -24,8 +24,9 @@ GATT, um serviço custom com uma característica de leitura (notify).
 | Item | Valor |
 | --- | --- |
 | Nome do serviço (advertising) | `AutoOS-<sufixo do device>` (ex.: `AutoOS-A3F1`) |
-| Service UUID | `0000AU70-0000-1000-8000-00805F9B34FB` *(placeholder — gerar UUID real antes da implementação)* |
-| Characteristic (telemetria, notify) | `0000AU71-0000-1000-8000-00805F9B34FB` *(placeholder)* |
+| Service UUID | `b6a7d8c2-3c0d-4880-b010-7da46f99a9da` |
+| Characteristic (telemetria, notify) | `2a7bed5d-14c0-4c82-a2c2-8f4169e13ecf` |
+| MTU | O app pede 185 bytes ao conectar. O payload (~150 bytes) pode ainda chegar em pedaços; o app junta até fechar o objeto JSON. |
 | Formato do payload | JSON UTF-8, um objeto por notificação |
 
 Payload de cada notificação:
@@ -41,11 +42,15 @@ Payload de cada notificação:
 }
 ```
 
+Faixas aceitas pelo app (fora delas a leitura inteira é descartada, RF-13): `mileage` 0–9 999 999 km, `rpm` 0–16 383, `engineTemperature` −40–215 °C, `batteryVoltage` 0–32 V, `dtcCodes` no formato `[PCBU][0-3][0-9A-F]{3}`.
+
 Campos opcionais quando o PID correspondente não responde: `rpm`, `engineTemperature`, `batteryVoltage`. `mileage` é a leitura mais confiável e deve estar presente sempre que possível — é o campo que substitui a digitação manual (RF-13). `dtcCodes` é `[]` quando não há código ativo, nunca omitido.
 
 ### 1.2 Fallback ELM327 (Bluetooth Classic, perfil SPP)
 
-Sem GATT — é um socket serial sobre RFCOMM. O app envia comandos AT/PID (protocolo ELM327 padrão: `ATZ`, `0100`, `010C` para RPM, `0105` para temperatura, `0142` para tensão, `03` para DTCs) e faz o parse da resposta hexadecimal para o mesmo formato JSON da seção 1.1 antes de seguir o fluxo (RF-13/RF-14 não diferenciam a origem depois desse ponto).
+Sem GATT — é um socket serial sobre RFCOMM. O app envia comandos AT/PID (protocolo ELM327 padrão: `ATZ`, `0100`, `010C` para RPM, `0105` para temperatura, `0142` para tensão, `01A6` para o odômetro, `03` para DTCs) e faz o parse da resposta hexadecimal para o mesmo formato JSON da seção 1.1 antes de seguir o fluxo (RF-13/RF-14 não diferenciam a origem depois desse ponto).
+
+`mileage` no ELM327 vem **só** do PID `01A6` (odômetro, 0,1 km por bit). O PID `0131` (distância desde que os códigos foram apagados) **não** serve: o snapshot grava `mileage` em `vehicles.reference_mileage`, e um valor que não é a quilometragem corromperia a referência do veículo. Se o veículo não suporta `01A6`, a leitura aparece sem `mileage` e o app **não** envia snapshot à API até chegar uma leitura com `mileage`.
 
 Por isso a lógica de pareamento (RF-12/RF-17) trata os dois caminhos como uma única interface interna (`ObdReader`), com duas implementações: `BleReader` e `Elm327ClassicReader`.
 
@@ -57,7 +62,7 @@ Por isso a lógica de pareamento (RF-12/RF-17) trata os dois caminhos como uma �
 
 | Item | Valor |
 | --- | --- |
-| Host/porta | `env: LARCC_MQTT_HOST` / `env: LARCC_MQTT_PORT` — pendente de credencial real do LARCC (ver Known Gaps) |
+| Host/porta | `env: LARCC_MQTT_HOST` / `env: LARCC_MQTT_PORT` — pendente de credencial real do LARCC (ver Known Gaps). No app: `EXPO_PUBLIC_LARCC_MQTT_URL`, em `wss://` (MQTT sobre WebSocket seguro: React Native não abre socket TCP+TLS cru), então o broker precisa de listener WebSocket com TLS. |
 | TLS | Obrigatório. Sem fallback para MQTT em texto puro, nem em desenvolvimento contra o broker real. |
 | Client ID | `autoos-app-<installationId>` |
 | QoS | 1 (at-least-once) — perda ocasional é aceitável (RF-14/RNF-04), duplicata não é grave para série temporal |
@@ -101,7 +106,7 @@ RNF-04: falha ao publicar (sem rede, broker indisponível, handshake TLS falho) 
 
 ## Known Gaps
 
-- UUIDs de serviço/característica BLE são placeholders — gerar valores reais (`uuidgen`) antes de programar o firmware, e atualizar este arquivo no mesmo commit.
 - Credenciais reais do broker LARCC (host, porta, certificado) ainda não fornecidas pela infraestrutura — `.env.example` traz variáveis vazias com comentário.
 - Sem fila de retry/offline para publicações MQTT perdidas — se isso virar requisito, é PR novo com fila local (ex.: SQLite) no app.
-- Algoritmo exato de hash de `vehicleHash` (HMAC vs. hash simples, rotação de chave) ainda não decidido — hoje é placeholder conceitual, não implementação.
+- `vehicleHash` é HMAC-SHA256 do **id interno do veículo** (não da placa) com chave só do AutoOS, truncado a 32 caracteres hex. A chave vai no app (`EXPO_PUBLIC_VEHICLE_HASH_KEY`) e, portanto, é extraível de um APK: protege a placa do LARCC, não de quem tem o APK. Rotação de chave não existe.
+- O mapeamento `vehicleHash` → placa "vive só no Postgres do AutoOS" (RF-15), mas a API ainda não tem tabela nem rota para isso: hoje só dá para reconstituí-lo recalculando o HMAC a partir de `vehicles.id` com a mesma chave.
