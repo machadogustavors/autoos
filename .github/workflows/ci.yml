@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    env:
+      JWT_SECRET: ci-test-secret
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/autoos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      # Sem --fix: o CI recusa código que o autofix mudaria.
+      - run: npx eslint "{src,test}/**/*.ts"
+      - run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+      - run: npm run build
+      - run: npm run test
+      - run: npm run test:e2e

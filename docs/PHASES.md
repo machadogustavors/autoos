@@ -78,9 +78,9 @@ Validado: `nest build`, `eslint`, `prettier`, `jest` (46 testes) e `jest:e2e` (5
 
 ## Fase 8 — CI
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-`.github/workflows/ci.yml`: lint (ESLint + Prettier), testes, build — em todo push, conforme comprometido no AGENTS.md.
+`.github/workflows/ci.yml`: em todo push e PR roda `prisma generate`, ESLint (sem `--fix`), `prettier --check`, build, Jest unitário e e2e. Os comandos são os mesmos que passam localmente. **Não validado:** a execução no GitHub Actions em si (nenhum push feito ainda); marcar o job `api` como check obrigatório na `main` é configuração do repositório no GitHub, fora do código.
 
 ## Fase 9 — Scaffold do app mobile
 
