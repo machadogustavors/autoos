@@ -121,11 +121,17 @@ Validado (Jest): parsing de payload e de PIDs com vetores calculados à mão, mo
 
 ## Fase 12 — Firmware do dispositivo IoT
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída (compila e passa nos testes; **nunca rodou numa placa**)
 
-Projeto PlatformIO em `device/`: firmware ESP32 expondo o serviço BLE de telemetria descrito em `contract/mqtt-topics.md`, com leitura simulada de PIDs OBD-II (sem MCP2515 físico conectado ainda).
+`device/` (PlatformIO, Arduino + NimBLE-Arduino 2.x): anuncia `AutoOS-<sufixo do MAC>` com o service UUID do contrato e notifica 1 leitura por segundo pela característica de telemetria. Interface `ObdSource` com uma única implementação, a **simulada** (motor esquenta, bateria ~12,6 V, `P0301` liga e desliga a cada minuto, quilometragem fictícia) — o MCP2515 não está ligado. Serialização do payload em C++ puro (`reading.cpp`): campo sem resposta é omitido (nunca `0`), `dtcCodes` sempre presente, faixas iguais às do app, buffer pequeno demais é recusado em vez de estourar.
 
----
+Decisão de contrato: o ESP32 não tem relógio, então `capturedAt` passou a ser **opcional no payload BLE** e o app carimba a chegada (`parseReadingPayload` recebe `receivedAt`). No MQTT e no snapshot HTTP continua obrigatório.
+
+Validado: `pio test -e native` (11 testes Unity: payload exato do contrato, omissão de PID, faixas, DTC malformado, buffer pequeno, pior caso de 8 DTCs, simulador) e `pio run -e esp32dev` (compila; flash 60%, RAM 11%), ambos num container. O CI repete os dois.
+
+**Não validado:**
+- Nada foi gravado numa ESP32. Anúncio (UUID no anúncio, nome na resposta de scan), negociação de MTU, notificações em pedaços e religar o anúncio após desconexão estão escritos conforme a API do NimBLE, mas ninguém conectou o app a uma placa. É o primeiro teste a fazer com hardware na mão.
+- Não há implementação real de CAN/MCP2515: ler `010C`/`0105`/`0142`/`01A6`/`03` num veículo é a próxima etapa e exige a placa e um carro.
 
 ## Fase 13 — Implantação e validação contra Postgres real
 
@@ -149,4 +155,4 @@ Pontos conhecidos, não corrigidos: mensagens de 401/404 padrão do Nest saem em
 - **Credenciais reais** (Google OAuth, broker LARCC) — fora do escopo desta rodada, conforme combinado.
 - **Hardware físico**: o firmware vai rodar em simulação de leitura; validação com MCP2515 + veículo real é a próxima etapa fora do código.
 - **iOS**: fora do escopo da V1 (ver RNF-15).
-- **`npm install` / `npx prisma migrate dev`**: os projetos são escritos com todas as dependências declaradas; a instalação real roda durante as fases quando possível, mas o ambiente final de quem for continuar precisa confirmar.
+- **Aparelho Android**: sem Android SDK nesta máquina, o app nunca foi instalado nem aberto; é o primeiro passo de quem continuar (`npm run android` em `app/`).

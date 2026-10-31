@@ -72,7 +72,7 @@ Precisa do Android SDK e de um aparelho (ou emulador com Google Play). Só Andro
 ## Status
 
 - `api/`: completa (auth Google, clientes, veículos, estoque, OS, itens, snapshot de telemetria), com testes unitários e e2e.
-- `app/`: telas do loop principal, pareamento BLE/ELM327 e publicação MQTT escritos, tipados e empacotando; **ainda não rodaram em aparelho** (ver `docs/PHASES.md`, Fases 10 e 11).
-- `device/`: firmware ainda não existe.
+- `app/`: telas do loop principal, pareamento BLE/ELM327 e publicação MQTT escritos, tipados e empacotando; **nunca rodaram em aparelho** (ver `docs/PHASES.md`, Fases 10 e 11).
+- `device/`: firmware ESP32 (BLE) com leituras **simuladas**; compila e passa nos testes, nunca rodou numa placa nem lê CAN de verdade.
 
 Diário de bordo e o que falta validar: [docs/PHASES.md](./docs/PHASES.md).
