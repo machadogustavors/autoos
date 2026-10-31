@@ -14,6 +14,7 @@ function baseOrderRow(overrides: Partial<Record<string, unknown>> = {}) {
     id: 'os-1',
     status: ServiceOrderStatus.open,
     createdAt: new Date('2026-10-14T13:00:00-03:00'),
+    vehicleId: 'v1',
     description: null,
     completedAt: null,
     vehicle: { plate: 'ABC1D23', brand: 'Volkswagen', model: 'Gol' },
@@ -392,6 +393,7 @@ describe('ServiceOrdersService', () => {
       expect(result.items).toHaveLength(20);
       expect(result.paging.hasMore).toBe(true);
       expect(result.items[0]).toMatchObject({
+        vehicleId: 'v1',
         plate: 'ABC1D23',
         customerName: 'Wilson Machado',
       });

@@ -343,6 +343,7 @@ export class ServiceOrdersService {
     id: string;
     status: ServiceOrderStatus;
     createdAt: Date;
+    vehicleId: string;
     vehicle: { plate: string; brand: string | null; model: string | null };
     customer: { name: string };
     telemetrySnapshots: { dtcCodes: unknown }[];
@@ -355,6 +356,7 @@ export class ServiceOrdersService {
     return {
       id: order.id,
       status: order.status,
+      vehicleId: order.vehicleId,
       plate: order.vehicle.plate,
       customerName: order.customer.name,
       brand: order.vehicle.brand,

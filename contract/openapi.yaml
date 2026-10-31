@@ -739,10 +739,15 @@ components:
 
     ServiceOrderCard:
       type: object
-      required: [id, status, plate, customerName]
+      required: [id, status, vehicleId, plate, customerName]
       properties:
         id: { type: string }
         status: { $ref: "#/components/schemas/ServiceOrderStatus" }
+        vehicleId:
+          type: string
+          description: >-
+            Abre o histórico do veículo (RF-18) e deriva o vehicleHash da
+            telemetria (RF-15) — a placa sozinha não serve de chave.
         plate: { type: string }
         customerName: { type: string }
         brand: { type: string }

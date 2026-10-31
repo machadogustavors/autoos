@@ -135,7 +135,7 @@ Given: uma OS no pátio.
 When: o mecânico olha o card, sem abrir.
 Then: vê placa, cliente, marca/modelo, status, e um indicador se a última leitura trouxe DTC.
 
-Regras: schema `ServiceOrderCard`. Sem itens, sem telemetria completa — isso é do detalhe.
+Regras: schema `ServiceOrderCard` (inclui `vehicleId`, que o app usa para abrir o histórico, RF-18, e derivar o `vehicleHash`, RF-15). Sem itens, sem telemetria completa — isso é do detalhe.
 Contrato: schema `ServiceOrderCard`
 
 **RF-07 · Criar OS**
