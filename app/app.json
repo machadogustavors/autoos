@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "AutoOS",
+    "slug": "autoos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#17181A",
+    "platforms": ["android"],
+    "android": {
+      "package": "br.com.autoeletricawm.autoos",
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "neverForLocation": true
+        }
+      ],
+      "@react-native-google-signin/google-signin"
+    ]
+  }
+}
