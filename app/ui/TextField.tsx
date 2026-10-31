@@ -29,6 +29,7 @@ export function TextField({ label, error, multiline, ...input }: Props) {
       <Text style={styles.label}>{label}</Text>
       <TextInput
         {...input}
+        accessibilityLabel={label}
         multiline={multiline}
         onFocus={(e) => {
           setFocused(true);

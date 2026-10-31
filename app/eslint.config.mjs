@@ -48,7 +48,7 @@ export default tseslint.config(
   {
     // Testes: fakes assíncronos sem await, jest.fn() sem this e respostas
     // mockadas sem tipo são normais.
-    files: ['__tests__/**/*.ts'],
+    files: ['__tests__/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/unbound-method': 'off',

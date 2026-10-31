@@ -90,7 +90,7 @@ Validado: `nest build`, `eslint`, `prettier`, `jest` (46 testes) e `jest:e2e` (5
 
 Lacuna de contrato achada aqui: `ServiceOrderCard` não trazia `vehicleId`, necessário para abrir o histórico (RF-18) e derivar o `vehicleHash` (RF-15). Entrou primeiro no OpenAPI, com teste na API (commit separado).
 
-Validado: `tsc`, ESLint (`no-explicit-any` como erro), Prettier, Jest (86 testes: cliente HTTP incluindo refresh e concorrência, cache offline, rascunho, validação de formulário) e `expo export --platform android` (Metro resolve `mqtt` e `@noble/hashes`). `expo prebuild` gera o projeto Android com as permissões de Bluetooth corretas.
+Validado: `tsc`, ESLint (`no-explicit-any` como erro), Prettier, Jest (cliente HTTP incluindo refresh e concorrência, cache offline, rascunho, validação de formulário) e `expo export --platform android` (Metro resolve `mqtt` e `@noble/hashes`). `expo prebuild` gera o projeto Android com as permissões de Bluetooth corretas.
 
 ## Fase 10 — Telas do loop principal
 
@@ -100,7 +100,9 @@ Login, Pátio, Nova OS (cliente e veículo cadastrados na hora, rascunho salvo a
 
 Decisões: o seletor Serviço/Peça é um controle segmentado, não dois botões, para manter um primário por view; quantidade de estoque não usa fonte mono (mono é só de sensor, DESIGN.md).
 
-**Não validado:** nenhuma tela foi aberta em emulador ou aparelho — não há Android SDK nesta máquina. Layout, teclado e navegação só foram verificados por tipos e empacotamento.
+Validado: 28 testes de renderização (`__tests__/screens.test.tsx`, React Native Testing Library, serviços trocados por fakes) cobrem pátio (esqueleto, card, DTC, vazio, erro com retry, cache offline), detalhe (próximo passo por status, painel de telemetria, 409 explicado, itens), Nova OS (rascunho restaurado, falha de rede mantém o rascunho e o retry reenvia a **mesma** `Idempotency-Key`, editar gera chave nova, 409), Adicionar item (validação, `INSUFFICIENT_STOCK`), Pareamento (permissão negada, falha de conexão, leitura ao vivo, anexar, leitura sem quilometragem nunca é enviada, reconectando) e Login. Isso pegou que `TextField` não expunha o rótulo para acessibilidade.
+
+**Não validado:** nenhuma tela foi aberta em emulador ou aparelho — não há Android SDK nesta máquina. O teste de renderização prova estrutura e comportamento, **não** layout real, teclado, rolagem, gesto, tema nem a navegação entre telas (o `Navigation.tsx` não é exercitado).
 
 ## Fase 11 — Pareamento BLE e telemetria no app
 
