@@ -28,3 +28,24 @@ jobs:
       - run: npm run build
       - run: npm run test
       - run: npm run test:e2e
+
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      # Sem --fix: o CI recusa código que o autofix mudaria.
+      - run: npx eslint .
+      - run: npm run format:check
+      - run: npm test
+      # Prova que o Metro resolve tudo (mqtt, @noble/hashes…); não roda no aparelho.
+      - run: npx expo export --platform android --output-dir "$RUNNER_TEMP/export"

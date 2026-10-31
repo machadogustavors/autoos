@@ -84,21 +84,40 @@ Validado: `nest build`, `eslint`, `prettier`, `jest` (46 testes) e `jest:e2e` (5
 
 ## Fase 9 — Scaffold do app mobile
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-Estrutura inicial do `app/` (Expo + TypeScript, dev client), `app/theme/tokens.ts` gerado a partir do YAML do DESIGN.md, cliente HTTP tipado a partir do OpenAPI, armazenamento seguro de token.
+`app/` (Expo SDK 58 + React Native 0.88 + TypeScript, dev client, só Android): `theme/tokens.ts` copiado do front matter do DESIGN.md; tipos em `api/types.ts` espelhando o OpenAPI; `ApiClient` (bearer, `Idempotency-Key`, timeout, erro no formato do contrato) com renovação de sessão da RF-02 — um 401 dispara **um** refresh compartilhado entre chamadas simultâneas (a rotação trataria o segundo uso como token roubado) e repete a chamada uma vez; refresh recusado encerra a sessão, refresh com rede/5xx caída **não** desloga; tokens só em `expo-secure-store`. Repositórios (`repositories/`) com cache de leitura para o modo offline e rascunho da Nova OS; kit de UI conforme DESIGN.md (`Button`, `Card`, `Chip`, `BleBadge`, `Banner`, `TelemetryPanel`, `TextField`, `Screen`, estados vazio/esqueleto, controle segmentado).
+
+Lacuna de contrato achada aqui: `ServiceOrderCard` não trazia `vehicleId`, necessário para abrir o histórico (RF-18) e derivar o `vehicleHash` (RF-15). Entrou primeiro no OpenAPI, com teste na API (commit separado).
+
+Validado: `tsc`, ESLint (`no-explicit-any` como erro), Prettier, Jest (86 testes: cliente HTTP incluindo refresh e concorrência, cache offline, rascunho, validação de formulário) e `expo export --platform android` (Metro resolve `mqtt` e `@noble/hashes`). `expo prebuild` gera o projeto Android com as permissões de Bluetooth corretas.
 
 ## Fase 10 — Telas do loop principal
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída (compila e empacota; **nunca rodou em aparelho**)
 
-Login (Google Sign-In), Pátio, Nova OS, Detalhe da OS (com painel de telemetria e itens), Estoque — componentes conforme `DESIGN.md` (`card-service-order`, `panel-telemetry`, `chip-status-*`, etc.).
+Login, Pátio, Nova OS (cliente e veículo cadastrados na hora, rascunho salvo a cada edição e chave de idempotência que só muda quando o conteúdo muda), Detalhe da OS (painel de telemetria, itens, próximo passo da máquina de estados como único primário), Adicionar item (peça do estoque com baixa, peça avulsa, serviço), Estoque (busca, cadastro, ajuste absoluto), Histórico do veículo. Estados de loading, vazio, erro por seção e offline com cache em todas as listas.
+
+Decisões: o seletor Serviço/Peça é um controle segmentado, não dois botões, para manter um primário por view; quantidade de estoque não usa fonte mono (mono é só de sensor, DESIGN.md).
+
+**Não validado:** nenhuma tela foi aberta em emulador ou aparelho — não há Android SDK nesta máquina. Layout, teclado e navegação só foram verificados por tipos e empacotamento.
 
 ## Fase 11 — Pareamento BLE e telemetria no app
 
-**Status:** ⏳ planejada
+**Status:** ✅ código concluído; **sem nenhuma validação com hardware**
 
-Camada `ObdReader`/`BleReader`/`Elm327ClassicReader` (RF-12/RF-16/RF-17), tela de pareamento, publisher MQTT (RF-14/RF-15, com pseudonimização do veículo) — gera UUIDs reais nesta fase (fecha o Known Gap do `contract/mqtt-topics.md`).
+`obd/`: interface `ObdReader` com `BleReader` (ESP32, GATT notify, junta payload fragmentado por MTU, reconecta ao mesmo dispositivo por ~30 s antes de voltar ao scan) e `Elm327ClassicReader` (SPP, init AT, polling de PIDs, mesma reconexão). Parsing de payload com faixas físicas (leitura fora de faixa é descartada inteira) e de respostas ELM327 (`010C`, `0105`, `0142`, `01A6`, modo `03`). `telemetry/`: `vehicleHash` (HMAC-SHA256 do id interno do veículo), payload MQTT sem placa, `LarccPublisher` que só liga com `wss://` e engole qualquer falha (RNF-04), snapshot HTTP só ao confirmar na tela. UUIDs GATT reais gerados (fecha o Known Gap do `mqtt-topics.md`).
+
+Decisões que mudam o contrato de leitura: o ELM327 usa o PID `01A6` (odômetro) para `mileage`, **não** `0131` — o snapshot grava `vehicles.reference_mileage`, e `0131` (distância desde que os códigos foram apagados) corromperia o dado. Sem `01A6` não há snapshot (nada é inventado). MQTT vai por `wss://` porque React Native não abre TCP+TLS cru; o broker do LARCC precisa de listener WebSocket seguro.
+
+Validado (Jest): parsing de payload e de PIDs com vetores calculados à mão, montagem de frames, HMAC contra o vetor RFC 4231, payload MQTT sem placa nem id cru, publisher desligado sem TLS e sem quebrar o fluxo quando o broker falha.
+
+**Não validado e com risco real:**
+- BLE e Bluetooth Classic nunca falaram com hardware: nem o ESP32 (firmware é a Fase 12) nem um ELM327. RNF-14 (queda de sinal a 5 m) e a taxa de reconexão da validação da V1 estão por medir.
+- `react-native-bluetooth-classic` aparece como **não testada na New Architecture** (`expo-doctor`) e o RN 0.88 só tem New Architecture. O fallback ELM327 pode não carregar em runtime; só um build no aparelho diz. Se falhar, a alternativa é trocar a lib ou escrever um módulo nativo mínimo.
+- O parser de DTC do modo `03` trata o byte de contagem de ECUs CAN por heurística (resto ímpar → descarta o 1º byte). Precisa ser conferido contra um veículo real.
+- `mqtt` nunca conectou num broker de verdade; só o empacotamento e o publisher (com cliente falso) foram exercitados.
+- A chave do `vehicleHash` vai no bundle (`EXPO_PUBLIC_*`): protege a placa do LARCC, não de quem extrai o APK.
 
 ## Fase 12 — Firmware do dispositivo IoT
 

@@ -47,6 +47,21 @@ cd api && npm install && npx prisma migrate dev && npm run start:dev
 
 Sem app Android ainda: abra `http://localhost:3000/dev/login` (conta Google), copie o `idToken` e mande em `POST /v1/auth/login`. O e-mail precisa já existir em `users` (seed da migration) — login com Google não cria conta nova. Não use `idToken: "dev"`. O Android, depois, manda o mesmo JSON.
 
+## App local
+
+```bash
+cd app && cp .env.example .env   # preencha EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID etc.
+npm install
+npm run android                  # dev client; BLE não funciona no Expo Go
+npm test && npm run typecheck && npx eslint .
+```
+
+Precisa do Android SDK e de um aparelho (ou emulador com Google Play). Só Android na V1 (RNF-15).
+
 ## Status
 
-Fase de design de documentação — `api/`, `app/` e `device/` ainda não têm código. Este README e os arquivos ao lado descrevem o alvo antes da primeira linha.
+- `api/`: completa (auth Google, clientes, veículos, estoque, OS, itens, snapshot de telemetria), com testes unitários e e2e.
+- `app/`: telas do loop principal, pareamento BLE/ELM327 e publicação MQTT escritos, tipados e empacotando; **ainda não rodaram em aparelho** (ver `docs/PHASES.md`, Fases 10 e 11).
+- `device/`: firmware ainda não existe.
+
+Diário de bordo e o que falta validar: [docs/PHASES.md](./docs/PHASES.md).
