@@ -62,4 +62,29 @@ describe('ProductsService', () => {
     });
     expect(result.stockQuantity).toBe(8);
   });
+
+  it('searches by name when q is provided (RF-19)', async () => {
+    prisma.product.findMany.mockResolvedValue([]);
+
+    await service.findMany('filtro');
+
+    expect(prisma.product.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { name: { contains: 'filtro', mode: 'insensitive' } },
+      }),
+    );
+  });
+
+  it('paginates results', async () => {
+    const rows = Array.from({ length: 21 }, (_, i) => ({
+      id: `p${i}`,
+      name: `Peça ${i}`,
+    }));
+    prisma.product.findMany.mockResolvedValue(rows);
+
+    const result = await service.findMany(undefined, undefined, 20);
+
+    expect(result.items).toHaveLength(20);
+    expect(result.paging.hasMore).toBe(true);
+  });
 });

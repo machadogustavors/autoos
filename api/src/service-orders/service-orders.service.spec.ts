@@ -351,4 +351,50 @@ describe('ServiceOrdersService', () => {
       /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     });
   });
+
+  describe('findMany (RF-05, pátio)', () => {
+    it('defaults to open+in_progress when no status filter is given', async () => {
+      prisma.serviceOrder.findMany.mockResolvedValue([baseOrderRow()]);
+
+      await service.findMany();
+
+      expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            status: {
+              in: [ServiceOrderStatus.open, ServiceOrderStatus.in_progress],
+            },
+          },
+        }),
+      );
+    });
+
+    it('uses the given status filter when provided', async () => {
+      prisma.serviceOrder.findMany.mockResolvedValue([]);
+
+      await service.findMany([ServiceOrderStatus.completed]);
+
+      expect(prisma.serviceOrder.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: { in: [ServiceOrderStatus.completed] } },
+        }),
+      );
+    });
+
+    it('paginates and maps rows to cards (RNF-10)', async () => {
+      const rows = Array.from({ length: 21 }, (_, i) =>
+        baseOrderRow({ id: `os-${i}` }),
+      );
+      prisma.serviceOrder.findMany.mockResolvedValue(rows);
+
+      const result = await service.findMany(undefined, undefined, 20);
+
+      expect(result.items).toHaveLength(20);
+      expect(result.paging.hasMore).toBe(true);
+      expect(result.items[0]).toMatchObject({
+        plate: 'ABC1D23',
+        customerName: 'Wilson Machado',
+      });
+    });
+  });
 });

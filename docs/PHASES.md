@@ -68,9 +68,13 @@ Validado: `nest build`, `eslint` e `jest` (37 testes — 3 novos) rodam limpos.
 
 ## Fase 7 — Testes automatizados
 
-**Status:** ⏳ planejada
+**Status:** ✅ concluída
 
-Specs Jest (unitário + e2e) cobrindo a tabela da seção 6.5 do SPEC: idempotência, transição de status inválida, estoque insuficiente, paginação do pátio.
+Unitários cobrindo idempotência (`IdempotencyService`), transição de status inválida, estoque insuficiente e paginação do pátio, mais um e2e (`api/test/app.e2e-spec.ts`) que sobe a aplicação inteira (guard JWT, `ValidationPipe`, `HttpExceptionFilter`) e bate HTTP com supertest: `/v1/health` público, 401 sem token no formato do contrato, token válido passa pelo guard, 400 com `fields` por campo, `/dev/login` fora do prefixo `/v1`. `PrismaService` é mockado nos e2e (sem Postgres real neste ambiente).
+
+Bug real achado pelo e2e: o `HttpExceptionFilter` tratava como "já no formato do contrato" qualquer corpo com chave `error` — mas o `ValidationPipe` do Nest também tem `error` (string `"Bad Request"`), então o 400 de validação vazava sem `fields`. Corrigido em `isErrorBody`.
+
+Validado: `nest build`, `eslint`, `prettier`, `jest` (46 testes) e `jest:e2e` (5 testes) rodam limpos.
 
 ## Fase 8 — CI
 

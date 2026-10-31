@@ -68,5 +68,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 function isErrorBody(
   body: unknown,
 ): body is { error: { code: string; message: string } } {
-  return typeof body === 'object' && body !== null && 'error' in body;
+  // Cuidado: o formato padrão do Nest para erro de validação também tem uma
+  // chave `error` — só que como STRING ("Bad Request"), não objeto. Checar
+  // só `'error' in body` deixava esse formato passar sem reformatar.
+  if (typeof body !== 'object' || body === null || !('error' in body)) {
+    return false;
+  }
+  const error = body.error;
+  return typeof error === 'object' && error !== null && 'code' in error;
 }
