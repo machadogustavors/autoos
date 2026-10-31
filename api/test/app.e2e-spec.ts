@@ -39,6 +39,13 @@ describe('AutoOS API (e2e)', () => {
       .overrideProvider(PrismaService)
       .useValue({
         $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+        user: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue({
+            id: 'e2e-user',
+            name: 'Wilson Machado',
+            email: 'wilson@autoeletricawm.com.br',
+          }),
+        },
         customer: { create: jest.fn() },
         serviceOrder: { findMany: jest.fn().mockResolvedValue([]) },
       })
@@ -85,6 +92,27 @@ describe('AutoOS API (e2e)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ items: [] });
+  });
+
+  it('GET /v1/me returns the session user (getMe is /me, not /auth/me)', async () => {
+    const res = await request(server())
+      .get('/v1/me')
+      .set('Authorization', `Bearer ${signAccessToken()}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      id: 'e2e-user',
+      name: 'Wilson Machado',
+      email: 'wilson@autoeletricawm.com.br',
+    });
+  });
+
+  it('GET /v1/auth/me is not in the contract and must not exist', async () => {
+    const res = await request(server())
+      .get('/v1/auth/me')
+      .set('Authorization', `Bearer ${signAccessToken()}`);
+
+    expect(res.status).toBe(404);
   });
 
   it('POST /v1/customers without a name is 400 with a fields map (VALIDATION_ERROR)', async () => {

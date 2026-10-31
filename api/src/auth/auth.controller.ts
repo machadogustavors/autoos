@@ -24,8 +24,14 @@ export class AuthController {
   refresh(@Body() body: RefreshTokenDto) {
     return this.authService.refresh(body.refreshToken);
   }
+}
 
-  @Get('me')
+// getMe vive em /v1/me no contrato (openapi.yaml), não em /v1/auth/me.
+@Controller('me')
+export class MeController {
+  constructor(private readonly authService: AuthService) {}
+
+  @Get()
   me(@CurrentUser() user: CurrentUserPayload) {
     return this.authService.me(user.userId);
   }
