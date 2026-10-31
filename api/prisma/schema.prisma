@@ -44,7 +44,7 @@ model User {
   googleSub String?  @unique @map("google_sub")
   createdAt DateTime @default(now()) @map("created_at")
 
-  refreshTokens RefreshToken[]
+  refreshTokens   RefreshToken[]
   idempotencyKeys IdempotencyKey[]
 
   @@map("users")
@@ -82,13 +82,13 @@ model Customer {
 }
 
 model Vehicle {
-  id     String  @id @default(uuid())
-  customerId String @map("customer_id")
-  plate  String  @unique
-  brand  String?
-  model  String?
-  year   Int?
-  color  String?
+  id               String   @id @default(uuid())
+  customerId       String   @map("customer_id")
+  plate            String   @unique
+  brand            String?
+  model            String?
+  year             Int?
+  color            String?
   // Só usado até a primeira leitura de telemetria (RF-04) — depois disso,
   // TelemetrySnapshot.mileage é a fonte preferida (RF-13).
   referenceMileage Int?     @map("reference_mileage")
@@ -116,9 +116,9 @@ model ServiceOrder {
   completedAt DateTime?          @map("completed_at")
 
   customer           Customer            @relation(fields: [customerId], references: [id])
-  vehicle             Vehicle            @relation(fields: [vehicleId], references: [id])
-  items               ServiceOrderItem[]
-  telemetrySnapshots  TelemetrySnapshot[]
+  vehicle            Vehicle             @relation(fields: [vehicleId], references: [id])
+  items              ServiceOrderItem[]
+  telemetrySnapshots TelemetrySnapshot[]
 
   @@index([customerId])
   @@index([vehicleId])
@@ -127,11 +127,14 @@ model ServiceOrder {
 }
 
 model Product {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   name          String
-  stockQuantity Int      @default(0) @map("stock_quantity")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  stockQuantity Int       @default(0) @map("stock_quantity")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  // Exclusão lógica (RF-21): a linha fica para não quebrar o histórico das OS
+  // que já usaram a peça; some da lista e não aceita item novo.
+  deletedAt     DateTime? @map("deleted_at")
 
   items ServiceOrderItem[]
 
@@ -146,9 +149,9 @@ model ServiceOrderItem {
   // Nulo para type=service e para peça avulsa sem controle de estoque.
   // Preenchido só quando a peça vem do estoque (RF-19) — dispara a baixa
   // automática transacional (RF-11a).
-  productId String?  @map("product_id")
-  quantity  Decimal? @db.Decimal(10, 2)
-  createdAt DateTime @default(now()) @map("created_at")
+  productId      String?              @map("product_id")
+  quantity       Decimal?             @db.Decimal(10, 2)
+  createdAt      DateTime             @default(now()) @map("created_at")
 
   serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id])
   product      Product?     @relation(fields: [productId], references: [id])
@@ -169,9 +172,9 @@ model TelemetrySnapshot {
   batteryVoltage    Float?   @map("battery_voltage")
   // Array de códigos DTC (ex.: ["P0301"]). [] quando não há código ativo,
   // nunca nulo (RF-13).
-  dtcCodes  Json     @default("[]") @map("dtc_codes")
-  capturedAt DateTime @map("captured_at")
-  createdAt  DateTime @default(now()) @map("created_at")
+  dtcCodes          Json     @default("[]") @map("dtc_codes")
+  capturedAt        DateTime @map("captured_at")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   serviceOrder ServiceOrder @relation(fields: [serviceOrderId], references: [id])
 

@@ -296,7 +296,12 @@ export class ServiceOrdersService {
 
     return this.prisma.$transaction(async (tx) => {
       const decremented = await tx.product.updateMany({
-        where: { id: productId, stockQuantity: { gte: quantity } },
+        // deletedAt na própria baixa atômica: peça excluída nunca perde estoque.
+        where: {
+          id: productId,
+          deletedAt: null,
+          stockQuantity: { gte: quantity },
+        },
         data: { stockQuantity: { decrement: quantity } },
       });
 
@@ -304,7 +309,7 @@ export class ServiceOrdersService {
         const product = await tx.product.findUnique({
           where: { id: productId },
         });
-        if (!product) {
+        if (!product || product.deletedAt) {
           throw new NotFoundException('Peça não encontrada no estoque.');
         }
         throw new ConflictException({

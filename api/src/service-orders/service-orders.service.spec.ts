@@ -265,7 +265,8 @@ describe('ServiceOrdersService', () => {
       });
 
       expect(prisma.product.updateMany).toHaveBeenCalledWith({
-        where: { id: 'p1', stockQuantity: { gte: 2 } },
+        // RF-21: peça excluída nunca perde estoque, então o filtro vai na baixa.
+        where: { id: 'p1', deletedAt: null, stockQuantity: { gte: 2 } },
         data: { stockQuantity: { decrement: 2 } },
       });
     });
@@ -288,6 +289,33 @@ describe('ServiceOrdersService', () => {
       ).rejects.toMatchObject({
         response: { error: { code: 'INSUFFICIENT_STOCK' } },
       });
+      expect(prisma.serviceOrderItem.create).not.toHaveBeenCalled();
+    });
+
+    it('never deducts from a deleted product (RF-21)', async () => {
+      prisma.serviceOrder.findUnique.mockResolvedValue(baseOrderRow());
+      prisma.product.updateMany.mockResolvedValue({ count: 0 });
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'p1',
+        stockQuantity: 50,
+        deletedAt: new Date(),
+      });
+
+      await expect(
+        service.addItem('user-1', 'os-1', 'key-1', {
+          type: ServiceOrderItemType.part,
+          description: 'Filtro de óleo',
+          productId: 'p1',
+          quantity: 1,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      // O filtro tem de estar na própria baixa atômica, não só na checagem depois.
+      expect(prisma.product.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ deletedAt: null }) as unknown,
+        }),
+      );
       expect(prisma.serviceOrderItem.create).not.toHaveBeenCalled();
     });
   });

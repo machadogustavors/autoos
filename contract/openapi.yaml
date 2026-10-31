@@ -328,12 +328,38 @@ paths:
           $ref: "#/components/responses/Error"
         "404":
           $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: >-
+        Exclui peça do estoque (RF-21). Exclusão lógica: some da lista e não
+        aceita item novo, mas as OS antigas que a usaram ficam intactas.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Peça excluída
+        "401":
+          $ref: "#/components/responses/Error"
+        "404":
+          description: Peça não existe ou já foi excluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
 
   /service-orders:
     get:
       operationId: listServiceOrders
       tags: [service-orders]
-      summary: Pátio (RF-05)
+      summary: >-
+        Pátio (RF-05): sem `status`, só open e in_progress. Com `status`
+        repetido, qualquer combinação — é como "Todas as OS" (RF-22) lista
+        também as concluídas e canceladas.
       security: [{ bearerAuth: [] }]
       parameters:
         - name: status

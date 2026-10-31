@@ -16,7 +16,10 @@ export class ProductsService {
     const take = resolveLimit(limit);
 
     const rows = await this.prisma.product.findMany({
-      where: q ? { name: { contains: q, mode: 'insensitive' } } : undefined,
+      where: {
+        deletedAt: null,
+        ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: take + 1,
       ...(after ? { cursor: { id: after }, skip: 1 } : {}),
@@ -34,9 +37,19 @@ export class ProductsService {
     });
   }
 
+  // RF-21: exclusão lógica. Apagar a linha quebraria o histórico das OS.
+  async remove(id: string) {
+    await this.findOneOrThrow(id);
+    await this.prisma.product.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  // Peça excluída conta como inexistente.
   async findOneOrThrow(id: string) {
     const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) {
+    if (!product || product.deletedAt) {
       throw new NotFoundException('Peça não encontrada no estoque.');
     }
     return product;

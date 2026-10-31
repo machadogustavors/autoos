@@ -125,7 +125,7 @@ Given: mecânico autenticado.
 When: abre o pátio.
 Then: vê OS `open` e `in_progress`, mais recente primeiro.
 
-Regras: `completed` e `cancelled` não entram no pátio padrão (ficam no histórico do veículo, RF-18). Paginação: `after` + `limit` (20, máx. 50).
+Regras: `completed` e `cancelled` não entram no pátio padrão (ficam no histórico do veículo, RF-18, e em "Todas as OS", RF-22). Paginação: `after` + `limit` (20, máx. 50).
 Estados: loading (esqueleto), vazio real, erro, offline com cache.
 Contrato: `listServiceOrders`
 
@@ -288,6 +288,18 @@ Then: vê a lista de OS anteriores daquele veículo, com status, data e se cada 
 Regras: histórico é só transacional (snapshots por OS) — a série temporal bruta fica nos painéis do LARCC, fora do app.
 Contrato: `listVehicleServiceOrders`
 
+**RF-22 · Consultar OS por status ("Todas as OS")**
+
+O pátio (RF-05) só mostra o que está em aberto. Para ver o que já foi feito, existe uma lista com filtro.
+
+Given: mecânico autenticado.
+When: abre "Todas as OS" e escolhe um filtro: Todas, Abertas, Em andamento, Concluídas ou Canceladas.
+Then: vê as OS desse filtro, mais recente primeiro, com placa, cliente, marca/modelo, status, data de abertura e o indicador de DTC (como RF-06). Rolar até o fim carrega a próxima página. Tocar abre o detalhe (RF-09); OS concluída ou cancelada abre sem ação de editar.
+
+Regras: usa `listServiceOrders` com `status` repetido (`Todas` envia os quatro), `after` e `limit` (20, máx. 50) — sem path novo. O padrão ao abrir é **Todas**. O pátio continua só com `open` e `in_progress`.
+Estados: loading (esqueleto), vazio **por filtro** ("Nenhuma OS concluída."), erro na seção com "Tentar novamente", offline com cache da primeira página.
+Contrato: `listServiceOrders`
+
 ### 2.6 Estoque
 
 A V1 controla **quantidade de peça em estoque**, não compra nem fornecedor — esses ficam fora (ver Known Gaps, seção 6.4). Estoque entra no escopo porque toda peça usada na OS precisa refletir em alguma contagem — sem isso, o mecânico não sabe se tem a peça disponível antes de prometer o serviço.
@@ -310,6 +322,16 @@ Then: 201 (nova peça) ou 200 (ajuste), quantidade atualizada.
 Regras: ajuste manual é a única forma de repor estoque na V1 — não existe fluxo de "nota de compra" (isso é GMOpero, fora do AutoOS). É também a forma de corrigir uma baixa da RF-11a que não devia ter acontecido (ex.: item removido por engano).
 Falhas: 400 quantidade negativa.
 Contrato: `postProduct` · `patchProduct`
+
+**RF-21 · Excluir peça do estoque**
+
+Given: mecânico autenticado; peça cadastrada.
+When: exclui a peça (o app pede confirmação antes).
+Then: 204. A peça some da lista e da busca e não aceita mais item novo.
+
+Regras: a exclusão é **lógica** (`products.deleted_at`): a linha continua no banco para não quebrar o histórico das OS que já usaram a peça — o item guarda `description` e `quantity`, então a OS antiga segue igual. Peça excluída: ajustar quantidade (`patchProduct`) e usar em item (`postServiceOrderItem`) viram 404; excluir de novo também. Não há "desfazer" na V1 (cadastre a peça de novo).
+Falhas: 404 peça não existe ou já excluída.
+Contrato: `deleteProduct`
 
 ---
 
@@ -387,7 +409,8 @@ Protocolo: **REST JSON** para tudo transacional. **MQTT sobre TLS** só para o f
 | Consultar estoque | `GET /v1/products` | `listProducts` |
 | Cadastrar peça | `POST /v1/products` | `postProduct` |
 | Ajustar quantidade | `PATCH /v1/products/{id}` | `patchProduct` |
-| Pátio | `GET /v1/service-orders` | `listServiceOrders` |
+| Excluir peça | `DELETE /v1/products/{id}` | `deleteProduct` |
+| Pátio / Todas as OS | `GET /v1/service-orders` | `listServiceOrders` |
 | Detalhe | `GET /v1/service-orders/{id}` | `getServiceOrder` |
 | Criar OS | `POST /v1/service-orders` | `postServiceOrder` |
 | Status da OS | `PATCH /v1/service-orders/{id}` | `patchServiceOrder` |
@@ -415,6 +438,8 @@ Tudo autenticado com `Authorization: Bearer <token>`, exceto `getHealth`, `postL
 **POST /v1/products** (`postProduct`) — `{ name, stockQuantity }` → 201 peça.
 
 **PATCH /v1/products/{id}** (`patchProduct`) — `{ stockQuantity }` → 200 peça com quantidade ajustada.
+
+**DELETE /v1/products/{id}** (`deleteProduct`) — sem body → 204. 404 se a peça não existe ou já foi excluída.
 
 **POST /v1/service-orders/{id}/items** (`postServiceOrderItem`) — `{ type, description, productId?, quantity? }` → 201 item; se `productId` informado, decrementa `stockQuantity` na mesma transação (RF-11a). 409 OS fechada; 409 `INSUFFICIENT_STOCK`.
 
@@ -468,7 +493,8 @@ vehicles               id, customer_id, plate, brand, model, year, color,
                        UNIQUE (plate)
 service_orders         id, customer_id, vehicle_id, description, status,
                        created_at, updated_at, completed_at
-products               id, name, stock_quantity, created_at, updated_at
+products               id, name, stock_quantity, created_at, updated_at,
+                       deleted_at (nullable)
 service_order_items    id, service_order_id, type, description, product_id (nullable),
                        quantity, created_at
 telemetry_snapshots    id, service_order_id, mileage, engine_temperature,

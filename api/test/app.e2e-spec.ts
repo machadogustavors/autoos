@@ -15,6 +15,9 @@ import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter
 // docs/PHASES.md).
 
 process.env.JWT_SECRET = 'e2e-test-secret';
+// Hermético: o teste de /dev/login supõe API sem credencial do Google, mesmo
+// que o api/.env de quem roda tenha uma (dotenv não sobrescreve variável já definida).
+process.env.GOOGLE_CLIENT_ID = '';
 
 interface ErrorBody {
   error: { code: string; message: string; fields?: Record<string, string> };
@@ -45,6 +48,16 @@ describe('AutoOS API (e2e)', () => {
             name: 'Wilson Machado',
             email: 'wilson@autoeletricawm.com.br',
           }),
+        },
+        product: {
+          findUnique: jest
+            .fn()
+            .mockImplementation(({ where }: { where: { id: string } }) =>
+              Promise.resolve(
+                where.id === 'p1' ? { id: 'p1', deletedAt: null } : null,
+              ),
+            ),
+          update: jest.fn().mockResolvedValue({}),
         },
         customer: { create: jest.fn() },
         serviceOrder: { findMany: jest.fn().mockResolvedValue([]) },
@@ -113,6 +126,29 @@ describe('AutoOS API (e2e)', () => {
       .set('Authorization', `Bearer ${signAccessToken()}`);
 
     expect(res.status).toBe(404);
+  });
+
+  it('DELETE /v1/products/:id is 204 with no body (deleteProduct)', async () => {
+    const res = await request(server())
+      .delete('/v1/products/p1')
+      .set('Authorization', `Bearer ${signAccessToken()}`);
+
+    expect(res.status).toBe(204);
+    expect(res.body).toEqual({});
+  });
+
+  it('DELETE /v1/products/:id of an unknown product is 404 in the contract shape', async () => {
+    const res = await request(server())
+      .delete('/v1/products/missing')
+      .set('Authorization', `Bearer ${signAccessToken()}`);
+
+    expect(res.status).toBe(404);
+    expect((res.body as ErrorBody).error.code).toBeDefined();
+  });
+
+  it('DELETE /v1/products/:id requires a session', async () => {
+    const res = await request(server()).delete('/v1/products/p1');
+    expect(res.status).toBe(401);
   });
 
   it('POST /v1/customers without a name is 400 with a fields map (VALIDATION_ERROR)', async () => {

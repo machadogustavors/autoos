@@ -445,7 +445,8 @@ Estados documentados: default, pressed, disabled, loading. Sem hover (é app tou
 | Pareamento BLE | Parear | Lista de dispositivos encontrados. `badge-ble` de status |
 | Telemetria (dentro do detalhe) | — | Snapshot mais recente. Sem histórico gráfico na V1 |
 | Itens da OS | Adicionar item | Peça (do estoque ou avulsa) ou serviço, descrição, sem preço |
-| Estoque | Cadastrar peça | Lista com quantidade; ajuste manual (RF-20). Busca reaproveitada ao adicionar item |
+| Estoque | Cadastrar peça | Lista com quantidade; ajuste manual (RF-20); excluir peça (RF-21) com `button-danger` e confirmação. Busca reaproveitada ao adicionar item |
+| Todas as OS | — | Filtro por status (Todas, Abertas, Em andamento, Concluídas, Canceladas) sobre `card-service-order`, com a data de abertura. Vazio por filtro. Sem primário na view |
 | Histórico do veículo | — | Lista de OS anteriores da mesma placa |
 | Erro de seção | Tentar novamente (secundário) | |
 

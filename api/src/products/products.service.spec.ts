@@ -8,6 +8,7 @@ interface MockPrisma {
     findMany: jest.Mock;
     findUnique: jest.Mock;
     update: jest.Mock;
+    delete: jest.Mock;
   };
 }
 
@@ -22,6 +23,7 @@ describe('ProductsService', () => {
         findMany: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn(),
       },
     };
     service = new ProductsService(prisma as unknown as PrismaService);
@@ -70,9 +72,75 @@ describe('ProductsService', () => {
 
     expect(prisma.product.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { name: { contains: 'filtro', mode: 'insensitive' } },
+        where: {
+          deletedAt: null,
+          name: { contains: 'filtro', mode: 'insensitive' },
+        },
       }),
     );
+  });
+
+  describe('delete (RF-21)', () => {
+    it('hides deleted products from the list and the search', async () => {
+      prisma.product.findMany.mockResolvedValue([]);
+
+      await service.findMany();
+
+      expect(prisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { deletedAt: null } }),
+      );
+    });
+
+    it('soft-deletes: stamps deletedAt instead of removing the row', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'p1',
+        deletedAt: null,
+      });
+      prisma.product.update.mockResolvedValue({});
+
+      await service.remove('p1');
+
+      expect(prisma.product.update).toHaveBeenCalledWith({
+        where: { id: 'p1' },
+        data: { deletedAt: expect.any(Date) as Date },
+      });
+      // Apagar a linha quebraria o histórico das OS que usaram a peça.
+      expect(prisma.product.delete).not.toHaveBeenCalled();
+    });
+
+    it('404 when the product does not exist', async () => {
+      prisma.product.findUnique.mockResolvedValue(null);
+
+      await expect(service.remove('missing')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(prisma.product.update).not.toHaveBeenCalled();
+    });
+
+    it('404 when it was already deleted', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'p1',
+        deletedAt: new Date(),
+      });
+
+      await expect(service.remove('p1')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(prisma.product.update).not.toHaveBeenCalled();
+    });
+
+    it('cannot adjust the quantity of a deleted product', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        id: 'p1',
+        stockQuantity: 3,
+        deletedAt: new Date(),
+      });
+
+      await expect(
+        service.adjustQuantity('p1', { stockQuantity: 5 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.product.update).not.toHaveBeenCalled();
+    });
   });
 
   it('paginates results', async () => {
