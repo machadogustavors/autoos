@@ -1,2 +1,5 @@
 # Produção: certificados TLS e env nunca vão para o git
 deploy/certs/
+
+# Segredo do compose (POSTGRES_PASSWORD) gerado por deploy/larcc/deploy.sh
+/.env

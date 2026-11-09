@@ -173,6 +173,20 @@ Lição para quem mexe no schema: no Prisma 7, `migrate dev` **não** regenera o
 
 **Não validado:** BLE/Bluetooth no emulador (ele não tem Bluetooth); o restante do loop de pareamento continua dependendo de um celular real e do ESP32.
 
+## Fase 15 — Roteiro de deploy na nuvem do LARCC
+
+**Status:** ✅ scripts prontos e testados localmente; **nada foi executado dentro do LARCC**
+
+O LARCC liberou uma VM Ubuntu **até dezembro**, com manutenção depois do período letivo: serve para a entrega e para testes, não como casa definitiva. A VM só tem IP interno; o e-mail deles aceita pedidos de liberação de porta no firewall, e é isso que permite o celular chegar na API.
+
+`deploy/larcc/`: `bootstrap.sh` (Docker, git, firewall da VM, código em `/opt/autoos`), `deploy.sh` (gera `JWT_SECRET` e a senha do Postgres na primeira vez, garante o certificado, sobe o stack, espera a API e roda o seed; rodar de novo só atualiza e **não** troca segredos), `backup.sh` (dump comprimido, verificado, 14 dias de retenção) e `restore.sh`, mais um `README.md` com o acesso em dois saltos (`ProxyJump`), o pedido ao LARCC, certificado, backup e o que fazer ao terminar.
+
+Validado: `shellcheck` sem avisos; `deploy.sh` numa cópia limpa do repositório com Docker (primeira execução e reexecução; segredos preservados; usuário do seed sem duplicar); backup, **apagar um registro, restaurar e conferir que voltou**, com a API reconectando.
+
+Bugs achados ao testar: o `openssl` tinha o erro redirecionado para `/dev/null` (falha silenciosa; agora mostra a causa) e scripts `.sh` com fim de linha CRLF quebram no Linux, então o `.gitattributes` passou a forçar LF.
+
+**Não validado:** `bootstrap.sh` numa VM Ubuntu real (usa `apt`; o nome do pacote do plugin `docker compose` varia por versão e o script tenta as alternativas); a rede e o firewall do LARCC; certificado de verdade (Let's Encrypt) e renovação automática; um broker MQTT (o manual não cita nenhum).
+
 ## O que não vai ficar pronto para produção nesta rodada (por design, não por atraso)
 
 - **Credenciais reais** (Google OAuth, broker LARCC) — fora do escopo desta rodada, conforme combinado.
