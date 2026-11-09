@@ -7,8 +7,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 // em qualquer ambiente que não seja o seu próprio local: SEED_USER_EMAIL tem
 // de ser o e-mail da conta Google que vai entrar.
 async function main() {
-  const email = process.env.SEED_USER_EMAIL ?? 'wilson@autoeletricawm.com.br';
-  const name = process.env.SEED_USER_NAME ?? 'Wilson Machado';
+  const email = process.env.SEED_USER_EMAIL ?? 'machado.gustavo2905@gmail.com';
+  const name = process.env.SEED_USER_NAME ?? 'Gustavo Machado';
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
 
