@@ -107,6 +107,29 @@ Renovação (a cada ~60 dias) precisa repetir isso; não está automatizada.
 Sem domínio próprio, um nome gratuito (ex.: DuckDNS) apontando para o IP do
 LARCC resolve.
 
+### Quando só uma porta externa chega na VM (o caso real do LARCC)
+
+O LARCC não abriu 80/443: o professor criou um redirecionamento em TCP puro
+`138.94.76.170:8082` → porta 80 da VM. Por isso o `nginx.conf` termina TLS
+**também na porta 80** (sem redirect para HTTP) e o app usa
+`https://SEU.DOMINIO:8082/v1`. Como a 80 externa não está disponível, o
+certificado sai por **desafio DNS** (não precisa de porta aberta), com
+`acme.sh` e DuckDNS:
+
+```bash
+read -rs -p "Token DuckDNS: " DuckDNS_Token; export DuckDNS_Token; echo
+curl -s https://get.acme.sh | sh -s email=SEU@EMAIL
+~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+~/.acme.sh/acme.sh --issue --dns dns_duckdns -d SEU.duckdns.org
+~/.acme.sh/acme.sh --install-cert -d SEU.duckdns.org \
+  --fullchain-file /opt/autoos/deploy/certs/fullchain.pem \
+  --key-file /opt/autoos/deploy/certs/privkey.pem \
+  --reloadcmd "docker compose -f /opt/autoos/docker-compose.prod.yml exec -T nginx nginx -s reload"
+```
+
+O `acme.sh` agenda a renovação sozinho (cron) e o token fica em
+`~/.acme.sh/account.conf` (modo 600). Não cole o token em chat nem no git.
+
 Atualizar o sistema depois: `cd /opt/autoos && sudo git pull && sudo bash deploy/larcc/deploy.sh`.
 
 ## 5. Pedido ao LARCC
