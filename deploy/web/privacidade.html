@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de Privacidade · AutoOS</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #17181a; color: #f5f3ef; font: 16px/1.6 system-ui, sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; color: #ff9a5c; }
+  p, li { color: #f5f3ef; }
+  .muted { color: #b7b2aa; }
+</style>
+</head>
+<body>
+<main>
+<h1>Política de Privacidade do AutoOS</h1>
+<p class="muted">Última atualização: 11 de novembro de 2026.</p>
+
+<p>O AutoOS é o aplicativo da Auto Elétrica WM para abrir e acompanhar ordens de
+serviço (OS). Esta política explica quais dados o app usa, para quê e quais são
+os seus direitos, conforme a Lei Geral de Proteção de Dados (LGPD, Lei 13.709/2018).</p>
+
+<h2>Quem usa o app</h2>
+<p>O AutoOS é de uso interno da oficina. Só entram pessoas cujo e-mail foi
+previamente cadastrado pela oficina. O app não é voltado ao público em geral e
+não cria contas novas sozinho.</p>
+
+<h2>Dados que tratamos</h2>
+<ul>
+  <li><strong>Conta Google:</strong> e-mail e nome, para confirmar a sua identidade no login.
+    Não recebemos nem guardamos a sua senha do Google.</li>
+  <li><strong>Dados da oficina:</strong> clientes (nome e contato), veículos (placa, modelo,
+    quilometragem), ordens de serviço, itens (peças e serviços) e estoque de peças.</li>
+  <li><strong>Leitura do veículo (OBD-II):</strong> quilometragem, temperatura do motor, tensão
+    da bateria e códigos de falha (DTCs), lidos pelo adaptador Bluetooth conectado ao carro.
+    Um resumo pontual dessa leitura é anexado à OS.</li>
+  <li><strong>Telemetria contínua (opcional):</strong> quando ativada, a leitura do veículo pode ser enviada
+    a um servidor de pesquisa do laboratório LARCC. O identificador do veículo é
+    <em>pseudonimizado antes de sair do aparelho</em>: a placa não é enviada em texto puro.</li>
+  <li><strong>Tokens de sessão:</strong> guardados no armazenamento seguro do Android
+    (Keystore) para manter você conectado.</li>
+</ul>
+
+<h2>Permissões do Android</h2>
+<ul>
+  <li><strong>Bluetooth:</strong> para encontrar e se conectar ao adaptador do veículo.</li>
+  <li><strong>Localização:</strong> o Android a exige para buscar dispositivos Bluetooth em
+    algumas versões. O AutoOS <strong>não</strong> coleta nem armazena a sua localização.</li>
+</ul>
+
+<h2>Para que usamos</h2>
+<p>Apenas para operar a oficina: identificar quem acessa, registrar e acompanhar
+as OS e apoiar o diagnóstico do veículo. Não vendemos dados, não fazemos
+publicidade e não compartilhamos dados com terceiros para fins comerciais.</p>
+
+<h2>Com quem os dados trafegam</h2>
+<ul>
+  <li><strong>Servidor do AutoOS</strong> (nuvem do LARCC), por conexão criptografada (HTTPS).</li>
+  <li><strong>Google</strong>, apenas para o login (Google Sign-In).</li>
+  <li><strong>LARCC</strong>, para a telemetria opcional descrita acima.</li>
+</ul>
+
+<h2>Por quanto tempo guardamos</h2>
+<p>Os dados da oficina ficam enquanto forem necessários para o histórico das
+ordens de serviço. Peças excluídas do estoque saem das telas, mas o histórico de
+OS antigas é mantido. Você pode pedir a exclusão dos seus dados (veja abaixo).</p>
+
+<h2>Seus direitos</h2>
+<p>Você pode pedir acesso, correção, exclusão ou portabilidade dos seus dados, e
+saber com quem eles foram compartilhados. Para isso, fale com o contato abaixo.</p>
+
+<h2>Segurança</h2>
+<p>Toda comunicação entre o app e o servidor usa TLS. Os segredos do servidor
+ficam fora do código-fonte e o acesso exige login.</p>
+
+<h2>Contato</h2>
+<p>Dúvidas e pedidos sobre seus dados: <strong>machado.gustavo2905@gmail.com</strong>.</p>
+
+<h2>Mudanças nesta política</h2>
+<p>Se esta política mudar, a data no topo é atualizada.</p>
+</main>
+</body>
+</html>

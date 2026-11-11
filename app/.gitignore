@@ -4,5 +4,8 @@ dist/
 android/
 ios/
 .env
+upload-keystore.jks
+upload-keystore.properties
+*.jks
 *.log
 expo-env.d.ts

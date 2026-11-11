@@ -6,9 +6,16 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#17181A",
+    "icon": "./assets/icon.png",
     "platforms": ["android"],
     "android": {
       "package": "br.com.autoeletricawm.autoos",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#17181A"
+      },
       "permissions": [
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
@@ -29,7 +36,8 @@
       ],
       "@react-native-google-signin/google-signin",
       "./plugins/withBluetoothClassicBuildConfig",
-      "./plugins/withNewerCmake"
+      "./plugins/withNewerCmake",
+      "./plugins/withReleaseSigning"
     ]
   }
 }
