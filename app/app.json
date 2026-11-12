@@ -36,7 +36,8 @@
       "@react-native-google-signin/google-signin",
       "./plugins/withBluetoothClassicBuildConfig",
       "./plugins/withNewerCmake",
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      "./plugins/withSingleLocationPermission"
     ]
   }
 }
